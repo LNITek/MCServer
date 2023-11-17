@@ -1,0 +1,129 @@
+﻿<Page x:Class="MCServer.Views.PlayerSettingsPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      xmlns:local="clr-namespace:MCServer.Views"
+      xmlns:M="clr-namespace:MCServer.Models"
+      xmlns:VM="clr-namespace:MCServer.ViewModels"
+      mc:Ignorable="d"
+      d:DesignHeight="450" d:DesignWidth="800">
+
+    <Page.DataContext>
+        <VM:PlayerVM/>
+    </Page.DataContext>
+
+    <Grid Name="Root" Margin="10">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="300"/>
+            <ColumnDefinition/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Grid Margin="0,0,0,5">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <Label Content="Player Settings" VerticalAlignment="Center" FontWeight="Bold" FontSize="20"/>
+            <Button Grid.Column="1" Click="OpenFile" ToolTipService.ToolTip="Open Properties File" Margin="0,-5,0,0">
+                <ui:SymbolIcon Symbol="Open48"/>
+            </Button>
+        </Grid>
+
+        <Button Grid.Row="3" Click="Add" HorizontalAlignment="Stretch">
+            <StackPanel Orientation="Horizontal">
+                <ui:SymbolIcon Symbol="Add48" Margin="0,0,5,0"/>
+                <TextBlock Text="Add Player" VerticalAlignment="Center"/>
+            </StackPanel>
+        </Button>
+
+        <ui:AutoSuggestBox Grid.Row="1" PlaceholderText="Search..." TextChanged="QuarySubmit"/>
+
+        <ListView x:Name="lstDisplay" Grid.Row="2" SelectedItem="{Binding SelectedPlayer, Mode=TwoWay}" ItemsSource="{Binding FilterdPlayers, Mode=OneWay}"
+                  SelectedIndex="0" Margin="0,10,0,0">
+            <!--<ListBox.ItemContainerStyle>
+                <Style TargetType="ListBoxItem" BasedOn="{StaticResource DefaultListViewItemStyle}">
+                    <Setter Property="AllowDrop" Value="True"/>
+                    <EventSetter Event="PreviewMouseLeftButtonDown" Handler="Drag"/>
+                    <EventSetter Event="Drop" Handler="Drop"/>
+                </Style>
+            </ListBox.ItemContainerStyle>-->
+            <ListView.ItemTemplate>
+                <DataTemplate DataType="{x:Type M:Player}">
+                    <Grid Margin="5,0,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition  Width="80"/>
+                            <ColumnDefinition/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <Border Padding="5,0" CornerRadius="5" Background="{Binding PlayerlimitBrush, Mode=OneWay}" Margin="0,0,10,0"
+                                Grid.RowSpan="2" VerticalAlignment="Center">
+                            <Label Content="{Binding Permission, Mode=OneWay}" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        </Border>
+
+                        <Label Grid.Column="1" Content="{Binding Name, Mode=TwoWay}" FontWeight="Bold"/>
+                        <Label Grid.Column="1" Content="{Binding Xuid, Mode=OneWay}" FontSize="10" Grid.Row="1" Grid.ColumnSpan="2"/>
+                    </Grid>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+
+        <Grid Grid.Column="1" Grid.RowSpan="10" Margin="10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <Button Click="Delete" Foreground="Red" HorizontalAlignment="Right" Margin="0,-10,0,0" IsEnabled="{Binding Selected, Mode=OneWay}"
+                    ToolTipService.ToolTip="Remove Player Setting." Panel.ZIndex="2">
+                <ui:SymbolIcon Symbol="Delete48"/>
+            </Button>
+            
+            <Label Content="Name - " Target="{Binding ElementName=edtName}" FontWeight="Bold" ToolTipService.ToolTip="XBox Gamer Tag."/>
+            <TextBox Name="edtName" Text="{Binding SelectedPlayer.Name, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" Grid.Row="1"
+                     IsEnabled="{Binding Selected, Mode=OneWay}" TextChanged="SaveValue" Margin="0,0,0,10"/>
+
+            <Label Content="XUID :" Target="{Binding ElementName=edtXUID}" Grid.Row="2" FontWeight="Bold"/>
+            <TextBox Name="edtXUID" Text="{Binding SelectedPlayer.Xuid, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" Grid.Row="3"
+                     IsEnabled="{Binding Selected, Mode=OneWay}" TextChanged="SaveValue" Margin="0,0,0,10"/>
+
+            <Label Content="Permission :" Target="{Binding ElementName=cmbPermission}" Grid.Row="4" FontWeight="Bold"/>
+            <ComboBox Name="cmbPermission" Grid.Row="5" IsEditable="{Binding SelectedPlayer.IsVerifide, FallbackValue=false}" 
+                      SelectedItem="{Binding SelectedPlayer.Permission, Mode=TwoWay}" SelectionChanged="PermissionChanged"
+                      IsEnabled="{Binding Selected, Mode=OneWay}" Margin="0,0,0,10"/>
+
+            <Label Content="Properties :" Target="{Binding ElementName=pnlProps}" Grid.Row="6" FontWeight="Bold"/>
+            <StackPanel Name="pnlProps" Orientation="Horizontal" Grid.Row="7">
+                <CheckBox IsChecked="{Binding SelectedPlayer.AllowList, Mode=TwoWay}" Content="Add To Allowlist" IsEnabled="{Binding Selected, Mode=OneWay}"
+                          Margin="0,0,20,0" Checked="PropsToggled"/>
+                <ui:ToggleSwitch IsChecked="{Binding SelectedPlayer.IgnoresPlayerLimit, Mode=TwoWay}" Content="Ignores Player Limit" IsEnabled="{Binding Selected, Mode=OneWay}"
+                                 ToolTipService.ToolTip="True if this user should not count towards the maximum player limit." Checked="PropsToggled"/>
+            </StackPanel>
+
+            <ui:InfoBar Title="Note:" Message="These Changes Will Only Have An Effect After A Restart!" Severity="Warning" Grid.RowSpan="10" 
+                        VerticalAlignment="Bottom" IsOpen="True" IsClosable="False"/>
+        </Grid>
+    </Grid>
+</Page>

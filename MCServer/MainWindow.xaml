@@ -1,0 +1,77 @@
+﻿<ui:FluentWindow x:Class="MCServer.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        xmlns:local="clr-namespace:MCServer.Views"
+        mc:Ignorable="d" Title="MCServer" Height="600" Width="1100"
+        WindowCornerPreference="Default" ExtendsContentIntoTitleBar="False">
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="32"/>
+            <RowDefinition/>
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar Title="MCServer" Grid.ColumnSpan="10" VerticalContentAlignment="Top">
+            <ui:TitleBar.Icon>
+                <ui:SymbolIcon Symbol="ServerMultiple20" Filled="True"/>
+            </ui:TitleBar.Icon>
+        </ui:TitleBar>
+        
+        <ui:NavigationView x:Name="navMain" PaneDisplayMode="Left" Navigated="frmNav_Navigated"
+                           IsBackButtonVisible="Collapsed" Grid.Row="1" OpenPaneLength="150">
+            <ui:NavigationView.MenuItems>
+                <ui:NavigationViewItem Content="Console" TargetPageTag="MainPage" Click="navMainSelect">
+                    <ui:NavigationViewItem.Icon>
+                        <ui:SymbolIcon Symbol="WindowConsole20"/>
+                    </ui:NavigationViewItem.Icon>
+                </ui:NavigationViewItem>
+                <ui:NavigationViewItem Content="Dynamic DNS" TargetPageTag="DDNSPage" Click="navMainSelect">
+                    <ui:NavigationViewItem.Icon>
+                        <ui:SymbolIcon Symbol="NetworkCheck24"/>
+                    </ui:NavigationViewItem.Icon>
+                </ui:NavigationViewItem>
+                <ui:NavigationViewItem Content="Properties" TargetPageTag="PropertiesPage" Click="navMainSelect">
+                    <ui:NavigationViewItem.Icon>
+                        <ui:SymbolIcon Symbol="ContentSettings32"/>
+                    </ui:NavigationViewItem.Icon>
+                </ui:NavigationViewItem>
+                <ui:NavigationViewItem Content="Player Settings" TargetPageTag="PlayerSettingsPage" Click="navMainSelect">
+                    <ui:NavigationViewItem.Icon>
+                        <ui:SymbolIcon Symbol="PeopleSettings28"/>
+                    </ui:NavigationViewItem.Icon>
+                </ui:NavigationViewItem>
+                <ui:NavigationViewItem Content="How To" TargetPageTag="HowToPage" Click="navMainSelect">
+                    <ui:NavigationViewItem.Icon>
+                        <ui:SymbolIcon Symbol="BookInformation24"/>
+                    </ui:NavigationViewItem.Icon>
+                </ui:NavigationViewItem>
+                <ui:NavigationViewItem Content="Release Notes" TargetPageTag="ChangeLogPage" Click="navMainSelect">
+                    <ui:NavigationViewItem.Icon>
+                        <ui:SymbolIcon Symbol="DocumentTextToolbox24"/>
+                    </ui:NavigationViewItem.Icon>
+                </ui:NavigationViewItem>
+            </ui:NavigationView.MenuItems>
+            <ui:NavigationView.FooterMenuItems>
+                <ui:NavigationViewItem Content="Settings" TargetPageTag="SettingsPage" Click="navMainSelect">
+                    <ui:NavigationViewItem.Icon>
+                        <ui:SymbolIcon Symbol="Settings48"/>
+                    </ui:NavigationViewItem.Icon>
+                </ui:NavigationViewItem>
+            </ui:NavigationView.FooterMenuItems>
+            <ui:NavigationView.ContentOverlay>
+                <Grid>
+                    <ui:SnackbarPresenter x:Name="SnackbarPresenter" />
+                </Grid>
+            </ui:NavigationView.ContentOverlay>
+        </ui:NavigationView>
+
+        <!--<ui:InfoBar Name="ibrNotify" Title="MCServer" Severity="Informational" VerticalAlignment="Bottom" IsClosable="False"
+                    IsOpen="False" Margin="0,-5,0,0" Grid.RowSpan="10" Grid.ColumnSpan="10"/>-->
+    </Grid>
+</ui:FluentWindow>

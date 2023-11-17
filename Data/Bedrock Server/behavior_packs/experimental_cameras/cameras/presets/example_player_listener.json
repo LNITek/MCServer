@@ -1,0 +1,8 @@
+{
+  "format_version": "1.19.50",
+  "minecraft:camera_preset": {
+    "identifier": "example:example_player_listener",
+    "inherit_from": "minecraft:free",
+    "listener": "player"
+  }
+}
