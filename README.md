@@ -13,23 +13,21 @@
 
 Check The `Content Tables` Down Below Or Look At The [Documentasion](https://github.com/LNITek/MCServer/wiki) To See More Info.
 <br/>
-The [Change Log](https://github.com/LNITek/MCServer/blob/main/MCServer/ChangeLog.md) Contains Info Around Changes, Fixes And New Features.
+The [Change Log](https://github.com/LNITek/MCServer/blob/main/MCServer/ChangeLag.md) Contains Info Around Changes, Fixes And New Features.
 <br/>
 Have An Issue Or Feature In Mind Visit: [Issues And Features](https://github.com/LNITek/MCServer/issues).
 <br/>
 Any Issue Or New Feature For The `Base Software (Bedrock Dedicated Server)`: [Issues](https://bugs.mojang.com/projects/BDS/issues/BDS) And [Features](https://feedback.minecraft.net/).
 
 ## Installation
-```
-TODO: Add Intall Info
-```
+You Can Download `MCServer` [Here](https://github.com/LNITek/MCServer/releases) Or On My [Website](https://lnitek.com/Projects/zkEunhiFIqy4h1FVttEm).
 
 ## Suport
 | OS									| Suported	| Version	| Project	|
 | -----									| -----		| -----		| -----		|
-| Windows UI (7, 10, 11)				| [x]		| 1.0.0		| Win		|
-| Windows Server UI (2016 - 2019)		| [x]		| 1.0.0		| Win		|
-| Windows Server Console (2016 - 2019)	| [ ]		| 1.0.0		| Lite		|
+| Windows UI (7, 10, 11)				| [x]		| 1.0.0		| [Win](https://github.com/LNITek/MCServer/blob/main/MCServer) |
+| Windows Server UI (2016 - 2019)		| [x]		| 1.0.0		| [Win](https://github.com/LNITek/MCServer/blob/main/MCServer) |
+| Windows Server Console (2016 - 2019)	| [ ]		| 1.0.0		| [Lite](https://github.com/LNITek/MCServer/blob/main/MCServer%20Lite) |
 | Linux UI ()							| [ ]		| 0.0.0		|			|
 | Linux Server UI ()					| [ ]		| 0.0.0		|			|
 | Linux Server Console ()				| [ ]		| 0.0.0		|			|
@@ -51,12 +49,12 @@ TODO: Add Intall Info
 | World Export							| [ ] 0.0 | [ ] 0.0 | [ ] 0.0 | [ ] 0.0 | [ ] 0.0 | [ ] 0.0 |
 
 ## Command -Help
-| Command								| Parameters	| Description	| Exampel
-| -----									| -----		| -----		| ----- |
-| ! | [None] | Emergency Stop And Shutdown | "!" |
-| exit | (number: Shutdown Mode)	| Stops The Server And Shuts Down Your System | exit 1 |
-| start | [None] | Starts The Server If Not Running. | start |
-| restart | [None] | Restarts The Server. | restart |
-| stop | [None] | Stops The Server. | stop |
-| backup | [None] | Start Backing Up Cuurent Running World. | backup |
-| [Default] | [Unkown] | Anything Else Will Pass Thru To `The Base Software (Bedrock Dedicated Server)` | backup |
+| Command	| Parameters				| Description																	| Exampel	|
+| -----		| -----						| -----																			| -----		|
+| !			| [None]					| Emergency Stop And Shutdown													| "!"		|
+| exit		| (number: Shutdown Mode)	| Stops The Server And Shuts Down Your System									| exit 1	|
+| start		| [None]					| Starts The Server If Not Running.												| start		|
+| restart	| [None]					| Restarts The Server.															| restart	|
+| stop		| [None]					| Stops The Server.																| stop		|
+| backup	| [None]					| Start Backing Up Cuurent Running World.										| backup	|
+| [Default] | [Unkown]					| Anything Else Will Pass Thru To `The Base Software (Bedrock Dedicated Server)`| backup	|

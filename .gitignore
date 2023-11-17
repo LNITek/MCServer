@@ -3,6 +3,11 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
+# Data And Setup
+Data/
+MCserverSetup/
+*.sln
+
 # User-specific files
 *.rsuser
 *.suo
@@ -21,6 +26,8 @@ mono_crash.*
 [Dd]ebugPublic/
 [Rr]elease/
 [Rr]eleases/
+[Pp]ublish/
+[Pp]ublishs/
 x64/
 x86/
 [Ww][Ii][Nn]32/
