@@ -269,10 +269,10 @@ namespace MCServer.Views
             ServerProcess.StartInfo.RedirectStandardInput = true;
             ServerProcess.StartInfo.RedirectStandardOutput = true;
             ServerProcess.StartInfo.FileName = Path.GetFullPath(Path.Combine(MainWindow.ServerPath,"bedrock_server.exe"));
-            //ServerProcess.StartInfo.FileName = Path.Combine("C:\\Users\\Egbert\\Documents\\Visual Studio\\Visual C#\\MCServer\\Data\\Bedrock Server", "bedrock_server.exe");
             ServerProcess.StartInfo.StandardInputEncoding = Encoding.UTF8;
             ServerProcess.StartInfo.StandardOutputEncoding = Encoding.UTF8;
             ServerProcess.StartInfo.CreateNoWindow = true;
+            ServerProcess.StartInfo.ErrorDialog = true;
 
             ServerProcess.OutputDataReceived += Write;
             ServerProcess.Start();

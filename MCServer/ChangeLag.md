@@ -1,7 +1,7 @@
 ﻿# V1.0.0
 * Added: Main Server System.
 * Added: Power Control System.
-* Added: Backup Sestem.
+* Added: Backup System.
 * Added: AutoUpdater System.
 * Added: Dynamic DNS System.
 * Added: Properties Editor.
