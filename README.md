@@ -51,7 +51,7 @@ You Can Download `MCServer` [Here](https://github.com/LNITek/MCServer/releases) 
 ## Command -Help
 | Command	| Parameters				| Description																	| Exampel	|
 | -----		| -----						| -----																			| -----		|
-| !			| [None]					| Emergency Stop And Shutdown													| "!"		|
+| !			| [None]					| Emergency Stop And Shutdown													| !		|
 | exit		| (number: Shutdown Mode)	| Stops The Server And Shuts Down Your System									| exit 1	|
 | start		| [None]					| Starts The Server If Not Running.												| start		|
 | restart	| [None]					| Restarts The Server.															| restart	|
