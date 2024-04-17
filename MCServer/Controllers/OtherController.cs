@@ -61,7 +61,7 @@ namespace MCServer
         }
         #endregion
         #region Logger
-        internal static readonly ExLog Loger = new("ErrorLog.txt", Path.Combine(MainWindow.ServerPath,".."));
+        internal static readonly ExLog Loger = new("ErrorLog.txt", Path.Combine(MainWindow.ServerPath, "LOGS"));
 
         public static void ThrowLog(string Error)
         {

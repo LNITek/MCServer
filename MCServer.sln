@@ -15,8 +15,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "GIT", "GIT", "{A5D12D9C-C29
 		README.md = README.md
 	EndProjectSection
 EndProject
-Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "MCServerSetup", "MCServerSetup\MCServerSetup.vdproj", "{19F612E5-C824-4883-833E-232935A39D2F}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -31,8 +29,6 @@ Global
 		{5BE04E6B-D3E6-4037-A432-DC9942D3360C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5BE04E6B-D3E6-4037-A432-DC9942D3360C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5BE04E6B-D3E6-4037-A432-DC9942D3360C}.Release|Any CPU.Build.0 = Release|Any CPU
-		{19F612E5-C824-4883-833E-232935A39D2F}.Debug|Any CPU.ActiveCfg = Debug
-		{19F612E5-C824-4883-833E-232935A39D2F}.Release|Any CPU.ActiveCfg = Release
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -37,7 +37,7 @@ namespace MCServer.Views
             GetAllowList();
             GetPermission();
             Data.FilterdPlayers.Clear();
-            Data.FilterdPlayers.AddRange(Data.Players);
+            Data.Players.ForEach(Data.FilterdPlayers.Add);
 
             void GetAllowList()
             {
@@ -50,7 +50,7 @@ namespace MCServer.Views
                     (File.Open(MainWindow.ServerPath + "\\allowlist.json", FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
                 foreach (var Item in JsonData)
                 {
-                    if(Item.name == null || Item.xuid == null) continue;
+                    if(Item.name == null) continue;
                     var Play = Data.Players.Find(x => x.Name == Item.name);
                     if(Play != null)
                     {
@@ -60,7 +60,7 @@ namespace MCServer.Views
                         if(Play.Xuid != Item.xuid && !string.IsNullOrWhiteSpace(Item.xuid)) 
                             Play.Xuid = Item.xuid;
                     }
-                    else Data.Players.Add(new(Item.name, Item.xuid) { AllowList = true });
+                    else Data.Players.Add(new(Item.name, Item.xuid ?? "") { AllowList = true });
                 }
             }
             void GetPermission()

@@ -6,8 +6,6 @@ using MCServer.Properties;
 using MCServer.Views;
 using Wpf.Ui;
 using Wpf.Ui.Controls;
-using AutoUpdaterDotNET;
-using System.Threading.Tasks;
 
 namespace MCServer
 {
@@ -35,9 +33,7 @@ namespace MCServer
 
             Setup();
             Window = this;
-#if !DEBUG
-            UpdateChecker().Wait();
-#endif
+
             new Thread(DDNSPage.Setup) { Name = "DDNSThread", IsBackground = true }.Start();
         }
 
@@ -75,17 +71,6 @@ namespace MCServer
                 }
                 Property.Properties.Add(new Property(Prop[0].Trim(), Prop[1].Trim(), Com));
             }
-        }
-
-        private async Task UpdateChecker()
-        {
-            AutoUpdater.ApplicationExitEvent += () =>
-            {
-                MainPage.Stop();
-                Thread.Sleep(TimeSpan.FromSeconds(10));
-                Application.Current.Shutdown();
-            };
-            AutoUpdater.Start("https://firebasestorage.googleapis.com/v0/b/lnitek.appspot.com/o/Projects%2FMCServer%2FUPDATE.xml?alt=media");
         }
 
         public void NotifyUser(string Title, string Message, ControlAppearance Appearance)

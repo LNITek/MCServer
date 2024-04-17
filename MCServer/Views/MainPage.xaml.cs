@@ -50,7 +50,7 @@ namespace MCServer.Views
         public static Process ServerProcess = new();
         public static List<string> OutputList = new();
         public StreamWriter StreamInput;
-        readonly string[] Files = new[] { "server.properties", "allowlist.json", "permissions.json"/*, "valid_known_packs.json"*/ };
+        readonly string[] Files = ["server.properties", "allowlist.json", "permissions.json"/*, "valid_known_packs.json"*/];
 
         private void FastCMD(object sender, RoutedEventArgs e) =>
             CMD((sender as Wpf.Ui.Controls.MenuItem).Header.ToString().ToLower().Split(" ").ToList());
@@ -287,7 +287,7 @@ namespace MCServer.Views
             Exited = true;
             if (OutputList.Any(x => x.Contains("Exiting program") && x.Contains("ERROR")))
             {
-                var Dump = new StreamWriter(Path.Combine(MainWindow.ServerPath, "..", "ERROR_DUMP.txt"));
+                var Dump = new StreamWriter(Path.Combine(MainWindow.ServerPath, "LOGS", "ERROR_DUMP.txt"));
                 OutputList.ForEach(Dump.WriteLine);
                 Dump.Close();
                 OtherController.ThrowLog("BC-S01 | Server Terminated. Internal ERROR");
@@ -315,7 +315,7 @@ namespace MCServer.Views
         public void Stop(PowerMode Mode, bool CanBackup = true)
         {
             if (CanBackup) Backup();
-            Thread.Sleep(10000);
+            Thread.Sleep(1000);
             //Var
             int I = 0;
             string Colour = "§6", sMessage;
@@ -325,7 +325,7 @@ namespace MCServer.Views
             //Code
             switch (Mode)
             {
-                case PowerMode.None: sMessage = "Disconecting All Players"; Force = true; iWait = new(0, 0, 10); break;
+                case PowerMode.None: sMessage = "Disconnecting All Players"; Force = true; iWait = new(0, 0, 10); break;
 
                 case PowerMode.Restart: sMessage = "Reastarting"; break;
                 case PowerMode.Shutdown: sMessage = "Shuting Down"; break;
@@ -343,7 +343,7 @@ namespace MCServer.Views
             string sTime = "Minutes";
             int iTime = iSleep.Minutes;
             if (Force) { iSleep = new(0, 0, 10); sTime = "Seconds"; iTime = iSleep.Seconds; };
-            WriteDisplay($"Sending Server Warning : {sMessage}");
+            WriteDisplay($"Sending Server Warning: {sMessage}");
             WriteLine($"say {Colour} {sMessage} In {iTime} {sTime}...");
             Thread.Sleep(iSleep);
             WriteLine($"say {Colour} Turning Off...");
