@@ -5,7 +5,7 @@
 
 # Data And Setup
 Data/
-MCserverSetup/
+MCServerSetup/
 *.sln
 
 # User-specific files

@@ -50,24 +50,7 @@
                     </ui:Button.Icon>
                 </ui:Button>
             </Grid>
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition/>
-                    <ColumnDefinition/>
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition/>
-                    <RowDefinition/>
-                </Grid.RowDefinitions>
 
-                <Label Margin="0,12,0,0" Content="Auto Shutdown:" ToolTipService.ToolTip="Where The Backups Is Stored."/>
-                <ui:TimePicker Name="tpcSTTime" Grid.Row="1" Margin="0,0,10,0" Time="{Binding ShutdownTime, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"/>
-                <Label Margin="0,12,0,0" Grid.Column="1" Content="Shutdown Mode:" ToolTipService.ToolTip="Where The Backups Is Stored."/>
-                <ComboBox Name="cmbSTMode" SelectedValue="{Binding ShutdownMode, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
-                          Grid.Row="1" Grid.Column="1"/>
-
-            </Grid>
-            
             <Label Margin="0,12,0,0" FontSize="20" FontWeight="Medium" Content="About MCServer" />
             <Label Content="{Binding ServerMK}" />
             <Label Name="lblMK" />

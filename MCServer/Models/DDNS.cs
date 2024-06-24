@@ -8,7 +8,7 @@
         public static List<DDNS> DDNSList { get; } = new()
         {
             new("None",""){ ID = 0 },
-            new("Google",$"https://domains.google.com/nic/update?hostname={SUB}"){ ID = 1 },
+            //new("Google",$"https://domains.google.com/nic/update?hostname={SUB}"){ ID = 1 },
         };
 
         public static DDNS Find(int ID) => DDNSList.Find(x => x.ID == ID);

@@ -16,7 +16,7 @@ namespace MCServer.Models
         string name { get; set; }
         [NotifyChanged("Value")]
         string Val { get; set; }
-        public List<string> Comments { get; set; } = new();
+        public List<string> Comments { get; set; } = [];
 
         public string Desc => string.Join("\r\n", Comments);
         public string ShortDesc
@@ -31,11 +31,11 @@ namespace MCServer.Models
             }
         }
 
-        public Property(string Name, string Value, List<string> Comments)
+        public Property(string Name, string Value, IEnumerable<string> Comments)
         {
             this.Name = Name;
             this.Value = Value;
-            this.Comments = Comments;
+            this.Comments.AddRange(Comments);
         }
     }
 }

@@ -5,12 +5,6 @@
     <Setting Name="BackupPath" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
     </Setting>
-    <Setting Name="ShutdownTime" Type="System.TimeSpan" Scope="User">
-      <Value Profile="(Default)">00:00:00</Value>
-    </Setting>
-    <Setting Name="ShutdownMode" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">-1</Value>
-    </Setting>
     <Setting Name="DDNSType" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">0</Value>
     </Setting>

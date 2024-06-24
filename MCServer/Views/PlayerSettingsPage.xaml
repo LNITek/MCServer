@@ -47,18 +47,11 @@
 
         <ui:AutoSuggestBox Grid.Row="1" PlaceholderText="Search..." TextChanged="QuarySubmit"/>
 
-        <ListView x:Name="lstDisplay" Grid.Row="2" SelectedItem="{Binding SelectedPlayer, Mode=TwoWay}" ItemsSource="{Binding FilterdPlayers, Mode=OneWay}"
-                  SelectedIndex="0" Margin="0,10,0,0">
-            <!--<ListBox.ItemContainerStyle>
-                <Style TargetType="ListBoxItem" BasedOn="{StaticResource DefaultListViewItemStyle}">
-                    <Setter Property="AllowDrop" Value="True"/>
-                    <EventSetter Event="PreviewMouseLeftButtonDown" Handler="Drag"/>
-                    <EventSetter Event="Drop" Handler="Drop"/>
-                </Style>
-            </ListBox.ItemContainerStyle>-->
+        <ListView x:Name="lstDisplay" Grid.Row="2" SelectedIndex="0" Margin="0,10,0,0" Background="Transparent" BorderThickness="0,0,1,0"
+                  SelectedItem="{Binding SelectedPlayer, Mode=TwoWay}" ItemsSource="{Binding FilterdPlayers, Mode=OneWay}">
             <ListView.ItemTemplate>
                 <DataTemplate DataType="{x:Type M:Player}">
-                    <Grid Margin="5,0,0,0">
+                    <Grid Margin="10,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition  Width="80"/>
                             <ColumnDefinition/>

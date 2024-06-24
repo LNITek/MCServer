@@ -46,6 +46,8 @@ namespace MCServer
                 //services.AddSingleton<PacksPage>();
                 services.AddSingleton<SettingsPage>();
                 //services.AddSingleton<SettingsVM>();
+                services.AddSingleton<SchedulePage>();
+                services.AddSingleton<ScheduleVM>();
             }).Build();
 
         /// <summary>

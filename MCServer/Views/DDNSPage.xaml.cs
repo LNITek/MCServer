@@ -25,11 +25,14 @@ namespace MCServer.Views
 
             cmbDDNS.ItemsSource = DDNS.DDNSList;
 
-            cmbDDNS.SelectedIndex = Properties.Settings.Default.DDNSType;
-            edtUser.Text = Properties.Settings.Default.UserName;
-            edtPass.Password = Properties.Settings.Default.Password;
-            edtSub.Text = Properties.Settings.Default.SubDNS;
-            ntdInterval.Value = Properties.Settings.Default.Interval;
+            Loaded += (s, e) =>
+            {
+                cmbDDNS.SelectedIndex = Properties.Settings.Default.DDNSType;
+                edtUser.Text = Properties.Settings.Default.UserName;
+                edtPass.Password = Properties.Settings.Default.Password;
+                edtSub.Text = Properties.Settings.Default.SubDNS;
+                ntdInterval.Value = Properties.Settings.Default.Interval;
+            };
 
             StatusList.CollectionChanged += (s, e) => UpdateAll();
         }

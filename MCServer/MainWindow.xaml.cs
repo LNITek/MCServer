@@ -1,4 +1,6 @@
 ﻿using System.IO;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Windows;
 using ExtraFunctions.Extras;
 using MCServer.Models;
@@ -40,8 +42,10 @@ namespace MCServer
 #if DEBUG
         public const string ServerPath = "..\\..\\..\\..\\Data\\Bedrock Server\\";
 #else
-        public static string ServerPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Bedrock Server\\");
+        public static string ServerPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MCServer\\Bedrock Server\\");
 #endif
+        public readonly static string SchedulePath = Path.Combine(ServerPath, "..", "Schedule.json");
+
         private void Setup()
         {
             StateChanged += (s, e) =>
@@ -54,23 +58,42 @@ namespace MCServer
             };
             if (Settings.Default.Maximized) WindowState = WindowState.Maximized;
 
-            if (!File.Exists(ServerPath + "\\server.properties")) return;
-            using var Reader = new StreamReader(ServerPath + "\\server.properties");
-            while (!Reader.EndOfStream)
+            var jsonOptions = new JsonSerializerOptions
             {
-                var Line = Reader.ReadLine();
-                while (string.IsNullOrWhiteSpace(Line))
-                    Line = Reader.ReadLine();
-                var Prop = Line.Split('=');
-                var Com = new List<string>();
-                Line = Reader.ReadLine();
-                while (!string.IsNullOrWhiteSpace(Line) && Line.StartsWith('#'))
-                {
-                    Com.Add(Line);
-                    Line = Reader.ReadLine();
-                }
-                Property.Properties.Add(new Property(Prop[0].Trim(), Prop[1].Trim(), Com));
+                WriteIndented = true,
+                AllowTrailingCommas = true,
+                UnmappedMemberHandling = JsonUnmappedMemberHandling.Skip,
+            };
+            Directory.CreateDirectory(Path.Combine(ServerPath, "LOGS"));
+            if (!File.Exists(SchedulePath))
+            {
+                using var fileStream = File.Create(SchedulePath);
+                var json = JsonSerializer.Serialize(Schedule.Schedules, options: jsonOptions );
+                fileStream.Write(json.Select(x => (byte)x).ToArray());
             }
+            else using (var scheduleStream = new StreamReader(SchedulePath))
+                {
+                    var schedule = JsonSerializer.Deserialize<IEnumerable<Schedule>>(scheduleStream.ReadToEnd(), options: jsonOptions);
+                    Schedule.Schedules.AddRange(schedule);
+                };
+
+            if (File.Exists(ServerPath + "\\server.properties"))
+                using (var Reader = new StreamReader(ServerPath + "\\server.properties"))
+                    while (!Reader.EndOfStream)
+                    {
+                        var Line = Reader.ReadLine();
+                        while (string.IsNullOrWhiteSpace(Line))
+                            Line = Reader.ReadLine();
+                        var Prop = Line.Split('=');
+                        var Com = new List<string>();
+                        Line = Reader.ReadLine();
+                        while (!string.IsNullOrWhiteSpace(Line) && Line.StartsWith('#'))
+                        {
+                            Com.Add(Line);
+                            Line = Reader.ReadLine();
+                        }
+                        Property.Properties.Add(new Property(Prop[0].Trim(), Prop[1].Trim(), Com));
+                    }
         }
 
         public void NotifyUser(string Title, string Message, ControlAppearance Appearance)

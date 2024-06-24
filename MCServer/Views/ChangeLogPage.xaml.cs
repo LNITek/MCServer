@@ -34,7 +34,7 @@ namespace MCServer.Views
             DisplayMode = !DisplayMode;
             if (DisplayMode)
             {
-                var FilePath = Path.GetFullPath(Path.GetFullPath("ChangeLag.md"));
+                var FilePath = Path.GetFullPath(Path.GetFullPath("ChangeLog.md"));
                 if (File.Exists(FilePath)) mdMain.Source = new(FilePath);
             }
             else

@@ -26,8 +26,8 @@ namespace MCServer.Views
 
         private void Setup()
         {
-            MainWindow.Window.SizeChanged += (s, e) => Root.MaxHeight = MainWindow.Window.ActualHeight - 32;
-            Root.MaxHeight = MainWindow.Window.ActualHeight - 32;
+            MainWindow.Window.SizeChanged += (s, e) => Root.MaxHeight = MainWindow.Window.ActualHeight - 40;
+            Root.MaxHeight = MainWindow.Window.ActualHeight - 40;
 
             var FilePath = Path.GetFullPath(Path.Combine(MainWindow.ServerPath, "bedrock_server_how_to.html"));
             if (File.Exists(FilePath)) wbrMain.Source = new(FilePath);

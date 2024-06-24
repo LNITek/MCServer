@@ -7,6 +7,7 @@
       xmlns:local="clr-namespace:MCServer.Views"
       xmlns:M="clr-namespace:MCServer.Models"
       xmlns:VM="clr-namespace:MCServer.ViewModels"
+      xmlns:H="clr-namespace:MCServer.Helpers"
       mc:Ignorable="d" d:DesignHeight="450" d:DesignWidth="800"
       Background="Black" Foreground="White"
       KeepAlive="True">
@@ -15,24 +16,41 @@
         <VM:MainVM/>
     </Page.DataContext>
 
+    <Page.Resources>
+        <H:BoolInverter x:Key="BoolInverter"/>
+    </Page.Resources>
+
     <Grid Margin="10">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto"/>
             <ColumnDefinition/>
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
-            <RowDefinition x:Name="rowDef"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <ScrollViewer Grid.ColumnSpan="2" ScrollChanged="Display_AutoScroll" x:Name="Root">
+        <Menu Grid.ColumnSpan="2">
+            <ui:MenuItem Header="Start" Click="FastCMD" Cursor="Hand" Icon="{ui:SymbolIcon Play32}"
+                         IsEnabled="{Binding ServerStatus, Mode=OneWay, Converter={StaticResource BoolInverter}}"/>
+            <ui:MenuItem Header="Restart" Click="FastCMD" IsEnabled="{Binding Status, Mode=OneWay}" Cursor="Hand"
+                         Icon="{ui:SymbolIcon ArrowReset32}"/>
+            <ui:MenuItem Header="Stop" Click="FastCMD" IsEnabled="{Binding Status, Mode=OneWay}" Cursor="Hand"
+                         Icon="{ui:SymbolIcon Stop24}"/>
+            <Separator BorderBrush="{ui:ThemeResource ResourceKey=TextFillColorDisabledBrush}" Height="30"/>
+            <ui:MenuItem Header="Backup" Click="FastCMD" IsEnabled="{Binding Status, Mode=OneWay}" Cursor="Hand" 
+                         Icon="{ui:SymbolIcon DatabaseMultiple20}"/>
+        </Menu>
+
+        <ScrollViewer Grid.ColumnSpan="2" Grid.Row="1" ScrollChanged="Display_AutoScroll" x:Name="Root" VerticalAlignment="Top">
             <RichTextBox x:Name="Display" IsReadOnly="True" Background="Black" Foreground="White" BorderThickness="0">
                 <RichTextBox.Resources>
                     <Style TargetType="{x:Type Paragraph}">
                         <Setter Property="Margin" Value="0"/>
                     </Style>
                 </RichTextBox.Resources>
-                <RichTextBox.ContextMenu>
+                <!--<RichTextBox.ContextMenu>
                     <ContextMenu>
                         <ui:MenuItem Header="Controls" IsEnabled="False">
                             <ui:MenuItem.Icon>
@@ -40,35 +58,37 @@
                             </ui:MenuItem.Icon>
                         </ui:MenuItem>
                         <Separator/>
-                        <ui:MenuItem Header="Start" Click="FastCMD">
+                        <ui:MenuItem Header="Start" Click="FastCMD" IsEnabled="{Binding CMDRuning, Converter={StaticResource BoolInverter}}">
                             <ui:MenuItem.Icon>
                                 <ui:SymbolIcon Symbol="Play48"/>
                             </ui:MenuItem.Icon>
                         </ui:MenuItem>
-                        <ui:MenuItem Header="Restart" Click="FastCMD">
+                        <ui:MenuItem Header="Restart" Click="FastCMD" IsEnabled="{Binding CMDRuning, Converter={StaticResource BoolInverter}}">
                             <ui:MenuItem.Icon>
                                 <ui:SymbolIcon Symbol="ArrowReset48"/>
                             </ui:MenuItem.Icon>
                         </ui:MenuItem>
-                        <ui:MenuItem Header="Stop" Click="FastCMD">
+                        <ui:MenuItem Header="Stop" Click="FastCMD" IsEnabled="{Binding CMDRuning, Converter={StaticResource BoolInverter}}">
                             <ui:MenuItem.Icon>
                                 <ui:SymbolIcon Symbol="Stop24"/>
                             </ui:MenuItem.Icon>
                         </ui:MenuItem>
                         <Separator/>
-                        <ui:MenuItem Header="Backup" Click="FastCMD">
+                        <ui:MenuItem Header="Backup" Click="FastCMD" IsEnabled="{Binding CMDRuning, Converter={StaticResource BoolInverter}}">
                             <ui:MenuItem.Icon>
                                 <ui:SymbolIcon Symbol="DatabaseMultiple20"/>
                             </ui:MenuItem.Icon>
                         </ui:MenuItem>
                     </ContextMenu>
-                </RichTextBox.ContextMenu>
+                </RichTextBox.ContextMenu>-->
             </RichTextBox>
         </ScrollViewer>
-        <TextBlock Text="MCServer > " Grid.Row="1" VerticalAlignment="Center"/>
-        <TextBox x:Name="edtInput" Grid.Row="1" Grid.Column="1" Background="Black" BorderThickness="0" KeyUp="EnterCMD"/>
+
+        <TextBlock Text="MCServer > " Grid.Row="2" VerticalAlignment="Center"/>
+        <TextBox x:Name="edtInput" Grid.Row="2" Grid.Column="1" Background="Black" BorderThickness="0" KeyUp="EnterCMD"/>
+
         <Popup x:Name="popProgress" Grid.ColumnSpan="10" Width="{Binding ActualWidth, Mode=OneWay, ElementName=Display}"
-               PlacementTarget="{Binding ElementName=Display}" Placement="Top" VerticalOffset="50">
+               Placement="Top" VerticalOffset="0">
             <Border Background="#03a9f4" CornerRadius="5" Padding="10">
                 <StackPanel>
                     <TextBlock x:Name="lblTitle" Margin="5,0,0,5" Text="TITEL"/>

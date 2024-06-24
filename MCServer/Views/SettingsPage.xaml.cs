@@ -25,21 +25,18 @@ namespace MCServer.Views
         //Wpf.Ui.Appearance.ThemeType _currentTheme = Wpf.Ui.Appearance.ThemeType.Unknown;
         [NotifyChanged]
         string backupPath { get => Settings.Default.BackupPath; set => Settings.Default.BackupPath = value; }
-        [NotifyChanged]
-        TimeSpan shutdownTime { get => Settings.Default.ShutdownTime; set => Settings.Default.ShutdownTime = value; }
-        [NotifyChanged]
-        PowerMode shutdownMode { get => (PowerMode)Settings.Default.ShutdownMode; set => Settings.Default.ShutdownMode = (int)value; }
 
         [NotifyChanged]
         public string ServerMK => $"Current Server Version: " + Settings.Default.ServerMK;
 
         private void Setup()
         {
-            cmbSTMode.ItemsSource = Enum.GetValues(typeof(PowerMode)).Cast<PowerMode>();
-
             //CurrentTheme = Wpf.Ui.Appearance.Theme.GetAppTheme();Assembly.GetExecutingAssembly().Location
-            lblMK.Content = $"Version: {GetAssemblyVersion()}";
-
+#if DEBUG
+            lblMK.Content = $"Software Version: {GetAssemblyVersion()} Pre-release";
+#else
+            lblMK.Content = $"Software Version: {GetAssemblyVersion()}";
+#endif
             var FilePath = Path.GetFullPath(Path.Combine("Assets", "LNI.Tek Logo.png"));
             if (File.Exists(FilePath)) imgLogo.Source = new BitmapImage(new(FilePath));
         }

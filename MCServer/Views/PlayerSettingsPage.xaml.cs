@@ -25,6 +25,13 @@ namespace MCServer.Views
 
             Data = (PlayerVM)DataContext;
             Setup();
+
+            Unloaded += (s, e) =>
+            {
+                if (MainPage.Exited) return;
+                MainPage.WriteLine("allowlist reload");
+                MainPage.WriteLine("permission reload");
+            };
         }
 
         private PlayerVM Data;
