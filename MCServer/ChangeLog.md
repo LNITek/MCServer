@@ -1,4 +1,9 @@
-﻿# V0.2.0
+﻿# V0.2.1
+* Added: Exit And Power Fast Commands.
+* Fixed: Can now add exit `schedule`.
+* Fixed: `Schedule` Minutes Improvements.
+
+# V0.2.0
 * Added: Schedule System. (Schedule Backups, Shutdown and more)
 * Added: Timer to the backup system. (Total time it took to complete)
 * Fixed: `Minecraft Server` Files Downloading to the wrong folder location.

@@ -1,5 +1,7 @@
 ﻿# MCServer
 
+[![Release](https://img.shields.io/badge/Release-0.2.1-blue.svg)](https://github.com/LNITek/MCServer/releases/latest)
+
 `MCServer` Is Server Software For Minecraft Bedrock Using Mojang's Bedrock Dedicated Server Software (BDS) As A Base.
 
 > ***Note!*** This Software Is Optomised For Private Home Servers. Use It For A Public Server At Your Own Risk.
@@ -26,7 +28,7 @@ You Can Download `MCServer` [Here](https://github.com/LNITek/MCServer/releases) 
 
 | OS		| GUI	| Console	|
 | -----		| -----	| -----		|
-| Windows (7+) | :heavy_check_mark: (V0.2.0) | :wavy_dash:* (V0.0.0) |
+| Windows (7+) | :heavy_check_mark: (V0.2.1) | :wavy_dash:* (V0.0.0) |
 | Linux () | :x: | :x: |
 
 > *Console Version For The Windows Platform Is Not Up To Date! Commands and or other functions may or may not work as descibed.
