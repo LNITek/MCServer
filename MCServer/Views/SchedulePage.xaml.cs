@@ -60,6 +60,10 @@ namespace MCServer.Views
                 return;
             }
 
+            nbxTimeH.Value = sel.Time.Hours;
+            nbxTimeM.Value = sel.Time.Minutes;
+            nbxTimeS.Value = sel.Time.Seconds;
+
             sel.WeekDays.ForEach(SetDayOfWeeks);
             switch (sel.Command.ToLower())
             {
@@ -165,7 +169,7 @@ namespace MCServer.Views
                     sched = new("New Schedule", CMDType);
                     break;
                 case "stop":
-                case "Exit":
+                case "exit":
                     sched = new("New Schedule", CMDType, [10]);
                     break;
                 case "power":

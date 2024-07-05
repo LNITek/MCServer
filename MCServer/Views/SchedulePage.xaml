@@ -152,11 +152,11 @@
                 </Grid.ColumnDefinitions>
 
                 <ui:NumberBox Name="nbxTimeH" Grid.Column="0" Minimum="0" Maximum="23" PlaceholderText="Hours" ValueChanged="TimeChanged" 
-                              SpinButtonPlacementMode="Compact" Value="{Binding SelectedSchedule.Time.Hours, Mode=OneWay}"/>
+                              SpinButtonPlacementMode="Compact"/>
                 <ui:NumberBox Name="nbxTimeM" Grid.Column="1" Minimum="0" Maximum="59" PlaceholderText="Minutes" ValueChanged="TimeChanged" 
-                              SpinButtonPlacementMode="Compact" Value="{Binding SelectedSchedule.Time.Minutes, Mode=OneWay}"/>
+                              SpinButtonPlacementMode="Compact"/>
                 <ui:NumberBox Name="nbxTimeS" Grid.Column="2" Minimum="0" Maximum="59" PlaceholderText="Seconds" Visibility="Collapsed" 
-                              SpinButtonPlacementMode="Compact" Value="{Binding SelectedSchedule.Time.Seconds, Mode=OneWay}"/>
+                              SpinButtonPlacementMode="Compact"/>
             </Grid>
             <!--<ui:TimePicker Name="dtpTime" MinuteIncrement="15" Time="{Binding SelectedSchedule.Time, Mode=TwoWay}"/>-->
 
