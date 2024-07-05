@@ -38,6 +38,13 @@
                          Icon="{ui:SymbolIcon ArrowReset32}"/>
             <ui:MenuItem Header="Stop" Click="FastCMD" IsEnabled="{Binding Status, Mode=OneWay}" Cursor="Hand"
                          Icon="{ui:SymbolIcon Stop24}"/>
+            <ui:MenuItem Header="Exit" Click="FastCMD" IsEnabled="{Binding Status, Mode=OneWay}" Cursor="Hand" 
+                         Icon="{ui:SymbolIcon ArrowExit20}"/>
+            <ui:MenuItem Header="Power" IsEnabled="{Binding Status, Mode=OneWay}" Cursor="Hand" 
+                         Icon="{ui:SymbolIcon Power24}">
+                <ui:MenuItem Header="Shutdown" Click="FastCMD" Cursor="Hand"/>
+                <ui:MenuItem Header="Power Cycle" Click="FastCMD" Cursor="Hand"/>
+            </ui:MenuItem>
             <Separator BorderBrush="{ui:ThemeResource ResourceKey=TextFillColorDisabledBrush}" Height="30"/>
             <ui:MenuItem Header="Backup" Click="FastCMD" IsEnabled="{Binding Status, Mode=OneWay}" Cursor="Hand" 
                          Icon="{ui:SymbolIcon DatabaseMultiple20}"/>
@@ -50,37 +57,6 @@
                         <Setter Property="Margin" Value="0"/>
                     </Style>
                 </RichTextBox.Resources>
-                <!--<RichTextBox.ContextMenu>
-                    <ContextMenu>
-                        <ui:MenuItem Header="Controls" IsEnabled="False">
-                            <ui:MenuItem.Icon>
-                                <ui:SymbolIcon Symbol="ControlButton24"/>
-                            </ui:MenuItem.Icon>
-                        </ui:MenuItem>
-                        <Separator/>
-                        <ui:MenuItem Header="Start" Click="FastCMD" IsEnabled="{Binding CMDRuning, Converter={StaticResource BoolInverter}}">
-                            <ui:MenuItem.Icon>
-                                <ui:SymbolIcon Symbol="Play48"/>
-                            </ui:MenuItem.Icon>
-                        </ui:MenuItem>
-                        <ui:MenuItem Header="Restart" Click="FastCMD" IsEnabled="{Binding CMDRuning, Converter={StaticResource BoolInverter}}">
-                            <ui:MenuItem.Icon>
-                                <ui:SymbolIcon Symbol="ArrowReset48"/>
-                            </ui:MenuItem.Icon>
-                        </ui:MenuItem>
-                        <ui:MenuItem Header="Stop" Click="FastCMD" IsEnabled="{Binding CMDRuning, Converter={StaticResource BoolInverter}}">
-                            <ui:MenuItem.Icon>
-                                <ui:SymbolIcon Symbol="Stop24"/>
-                            </ui:MenuItem.Icon>
-                        </ui:MenuItem>
-                        <Separator/>
-                        <ui:MenuItem Header="Backup" Click="FastCMD" IsEnabled="{Binding CMDRuning, Converter={StaticResource BoolInverter}}">
-                            <ui:MenuItem.Icon>
-                                <ui:SymbolIcon Symbol="DatabaseMultiple20"/>
-                            </ui:MenuItem.Icon>
-                        </ui:MenuItem>
-                    </ContextMenu>
-                </RichTextBox.ContextMenu>-->
             </RichTextBox>
         </ScrollViewer>
 

@@ -59,8 +59,11 @@ namespace MCServer.Views
             FastCommands.AddRange([
                 new BackupCommand("Backup") { Action = () => CreateThread(() => Backup().Wait()) },
                 new StartCommand("Start") { Action = StartServer },
-                new RestartCommand("Restart") { Action =() => CreateThread(() => Restart().Wait()) },
+                new RestartCommand("Restart") { Action = () => CreateThread(() => Restart().Wait()) },
                 new StopCommand("Stop", new(0,0,10)) { Action = (x) => CreateThread(() => Stop(x).Wait()) },
+                new ExitCommand("Exit", new(0,0,10)) { Action = (x) => CreateThread(() => Exit(x).Wait()) },
+                new PowerCommand("Shutdown", PowerMode.Shutdown, new(0,0,10)) { Action = (x,I) => CreateThread(() => Power(x,I).Wait()) },
+                new PowerCommand("Power Cycle", PowerMode.Restart, new(0,0,10)) { Action = (x,I) => CreateThread(() => Power(x,I).Wait()) },
                 ]);
 
             //return;
