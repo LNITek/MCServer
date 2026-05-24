@@ -1,0 +1,36 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <ResourcePreloader />
+    <link rel="stylesheet" href="@Assets["app.css"]" />
+    <link rel="stylesheet" href="@Assets["MCServer.styles.css"]" />
+
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet" />
+    <link href="@Assets["_content/MudBlazor/MudBlazor.min.css"]" rel="stylesheet" />
+    <link href="@Assets["_content/MudBlazor.FontIcons.MaterialIcons/css/font.min.css"]" rel="stylesheet" />
+    <link href="@Assets["_content/MudBlazor.FontIcons.MaterialSymbols/css/font.min.css"]" rel="stylesheet" />
+    <ImportMap />
+    <HeadOutlet @rendermode="InteractiveServer" />
+</head>
+
+<body style="height:100vh">
+    <Routes @rendermode="InteractiveServer" />
+    <ReconnectModal />
+    <script src="@Assets["_framework/blazor.web.js"]"></script>
+    <script src="@Assets["_content/MudBlazor/MudBlazor.min.js"]"></script>
+    <script>
+        window.scrollToBottom = (element) => {
+            if (!element) return;
+            var threshold = 100;
+            if (element.scrollHeight - element.scrollTop - element.clientHeight < threshold) {
+                element.scrollTop = element.scrollHeight;
+            }
+        };
+    </script>
+</body>
+
+</html>

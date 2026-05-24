@@ -1,0 +1,94 @@
+﻿@inherits LayoutComponentBase
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+
+<MudThemeProvider @ref="_mudThemeProvider" Theme="Theme.MasterTheme" @bind-IsDarkMode="IsDarkMode" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudAppBar Elevation="1">
+        <MudIconButton Icon="@Icons.Rounded.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer"/>
+        <MudText Color="Color.Primary" Typo="Typo.h6">@PageHeader</MudText>
+        <MudSpacer />
+        <MudIconButton Icon="@GetToggleTheme()" Color="Color.Inherit" OnClick="ToggleDarkMode" />@* Style="position:fixed; top:12px; right:12px; z-index:9999;" *@
+    </MudAppBar>
+    <MudDrawer @bind-Open="@_open" Elevation="1">
+        <MudDrawerHeader>
+            <MudStack Row="true" Spacing="3" AlignItems="AlignItems.Center">
+                <MudImage Src="Assets/MCServer.png" Alt="Icon" Width="32" Height="32" ObjectFit="ObjectFit.Contain"/>
+                <MudText Typo="Typo.h6">MCServer</MudText>
+            </MudStack>
+        </MudDrawerHeader>
+        <MudNavMenu>
+            <MudNavLink Href="/" Icon="@Icons.Rounded.AreaChart">Dashboard</MudNavLink>
+
+            <MudNavGroup Icon="@Icons.Rounded.AllInbox" Title="Servers" Expanded="true">
+                <MudNavLink Icon="@Icons.Rounded.Terminal" Href="/console">Console</MudNavLink>
+                <MudNavLink Icon="@Icons.Rounded.HomeRepairService" Href="/props">Properties</MudNavLink>
+                <MudNavLink Icon="@Icons.Rounded.AdminPanelSettings" Href="/player-settings">Player Settings</MudNavLink>
+                <MudNavLink Icon="@Icons.Rounded.Timer" Href="/schedules">Schedule</MudNavLink>
+            </MudNavGroup>
+
+            <MudDivider Class="my-2" />
+
+            <MudNavLink Icon="@Icons.Rounded.StickyNote2" Href="/notes">How To</MudNavLink>
+            <MudNavLink Icon="@Icons.Rounded.EventNote" Href="/releases">Release Notes</MudNavLink>
+            <MudNavLink Icon="@Icons.Rounded.Settings" Href="/settings">Settings</MudNavLink>
+        </MudNavMenu>
+    </MudDrawer>
+    <MudMainContent Style="height:100%; display:flex; flex-direction:column;">
+        <div style="height:100%; display:flex; flex-direction:column; padding:18px;">
+            @Body
+        </div>
+    </MudMainContent>
+</MudLayout>
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>
+
+@code {
+    private bool _open = true;
+
+    private void ToggleDrawer()
+    {
+        _open = !_open;
+    }
+
+    private bool IsDarkMode { get; set; } = true;
+    private MudThemeProvider _mudThemeProvider = default!;
+
+    private void ToggleDarkMode()
+    {
+        IsDarkMode = !IsDarkMode;
+    }
+
+    private string GetToggleTheme() => IsDarkMode ? Icons.Rounded.LightMode : Icons.Rounded.DarkMode;
+
+    private string PageHeader => Nav.Uri[(Nav.Uri.LastIndexOf('/') + 1)..] switch
+    {
+        "" => "Dashboard",
+        "console" => "Console",
+        "props" => "Properties",
+        "player-settings" => "Player Settings",
+        "schedules" => "Schedule",
+        "notes" => "How To",
+        "releases" => "Release Notes",
+        "settings" => "Settings",
+        _ => "MCServer"
+    };
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        Program.Snackbar = Snackbar;
+        if (firstRender)
+        {
+            IsDarkMode = await _mudThemeProvider.GetSystemDarkModeAsync();
+            StateHasChanged();
+        }
+    }
+}

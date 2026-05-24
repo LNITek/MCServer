@@ -1,0 +1,186 @@
+﻿@page "/schedules"
+@inject MCBedrockServer Server
+@using System.Collections.ObjectModel
+
+<PageTitle>Schedules</PageTitle>
+
+<style>
+    .mud-input-control {
+        border: 0;
+        margin: 0;
+        padding: 0;
+        /* display: flex; */
+        flex: 0 1 auto;
+        max-width: 100%;
+        position: relative;
+        flex-direction: column;
+        vertical-align: top;
+        width:100%;
+    }
+
+    .mud-select {
+        display: flex;
+        flex-grow: 0;
+        position: relative;
+    }
+
+    .mud-picker-inline {
+        /* display: flex; */
+        flex: 1 1 auto;
+        position: relative;
+        max-width: 100%;
+        width:100%;
+    }
+
+    .mud-input-control.mud-input-control-boolean-input {
+        /* flex: none; */
+        margin: 0;
+    }
+</style>
+
+<div style="height:100%; display:flex; flex-direction:row;">
+    <MudStack Spacing="3" Style="min-width:25%; max-width:30%; width: 100%;">
+        <MudTextField T="string" @bind-Value="SearchText" Placeholder="Search..." Clearable Variant="Variant.Outlined"
+                      Adornment="Adornment.End" AdornmentIcon="@Icons.Rounded.Search" OnAdornmentClick="@Search"
+                      TextChanged="@(s => Search(s))">
+        </MudTextField>
+
+        <MudList T="Schedule" SelectionMode="SelectionMode.SingleSelection" @bind-SelectedValue="SelectedSchedule" Style="overflow:auto; height:100%">
+            @foreach (var schedule in Schedules)
+            {
+                <MudListItem Value="@schedule">
+                    <ChildContent>
+                        <MudStack Spacing="1" Row AlignItems="AlignItems.Center">
+                            <MudChip Color="@schedule.StateBrush" Text="@schedule.Mode.ToString()" />
+
+                            <MudStack Spacing="0">
+                                <MudText Typo="Typo.h6">@schedule.Name</MudText>
+                                <MudText Typo="Typo.body2">@schedule.LastRunFormatted</MudText>
+                            </MudStack>
+                        </MudStack>
+                    </ChildContent>
+                </MudListItem>
+            }
+        </MudList>
+        <MudButton Size="Size.Large" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Rounded.Add" OnClick="AddSchedule_Click">Add Schedule</MudButton>
+    </MudStack>
+
+    <MudDivider Vertical Class="mx-4" />
+
+    <MudStack Style="flex-grow:1; overflow:auto;">
+        <MudAlert Variant="Variant.Text" Severity="Severity.Warning">These changes is only in an effect after a restart!</MudAlert>
+
+        @if (SelectedSchedule is not null)
+        {
+            <MudStack Spacing="1" Row AlignItems="AlignItems.Center">
+                @* <MudText Typo="Typo.h6">@SelectedSchedule.LastRunFormatted</MudText> *@
+                <MudSelect Variant="Variant.Outlined" T="ScheduleMode" Label="Mode" Style="width:300px" @bind-SelectedValue="SelectedSchedule" ValueChanged="ScheduleModeChanged">
+                    @foreach (var mode in Enum.GetValues<ScheduleMode>())
+                    {
+                        <MudSelectItem Value="mode">@mode.ToString()</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudSwitch T="bool" @bind-Value="SelectedSchedule.Enabled" Label="Enabled" />
+                <MudIconButton Variant="Variant.Text" Color="Color.Error" Icon="@Icons.Rounded.Delete" OnClick="DeleteSchedule">
+
+                </MudIconButton>
+            </MudStack>
+
+            <MudTextField Variant="Variant.Outlined" T="string" Label="Name" @bind-Value="SelectedSchedule.Name"></MudTextField>
+            <MudTextField Variant="Variant.Outlined" T="string" Style="min-height:150px" Label="Description" @bind-Value="SelectedSchedule.Description"></MudTextField>
+
+            @if(SelectedSchedule.Mode is ScheduleMode.Once)
+            {
+                <MudStack Spacing="1" Row>
+                    <MudDatePicker Label="Date"></MudDatePicker>
+                    <MudTimePicker Label="Time"></MudTimePicker>
+                </MudStack>
+            }
+
+            @if (SelectedSchedule.Mode is ScheduleMode.Range)
+            {
+                <MudStack Spacing="1" Row>
+                    <MudDateRangePicker Label="Date"></MudDateRangePicker>
+                    <MudTextField Variant="Variant.Outlined" T="string" Label="Cron Expression"></MudTextField>
+                </MudStack>
+            }
+            @if (SelectedSchedule.Mode is ScheduleMode.Indefinite)
+            {
+                <MudStack Spacing="1" Row>
+                    <MudDatePicker Label="Start Date"></MudDatePicker>
+                    <MudTextField Variant="Variant.Outlined" T="string" Label="Cron Expression"></MudTextField>
+                </MudStack>
+            }
+        }
+        else
+        {
+            <MudAlert Variant="Variant.Text" Severity="Severity.Info">Select a player or create a new one.</MudAlert>
+        }
+    </MudStack>
+</div>
+
+@code {
+    public ObservableCollection<Schedule> SchedulesList = [];
+    public ExList<Schedule> Schedules;
+    public string SearchText { get; set; } = string.Empty;
+    public Schedule? SelectedSchedule = default;
+
+    public SchedulePage()
+    {
+        Schedules = new(SchedulesList);
+        Schedules.SetSort((a, b) => a.Name?.CompareTo(b.Name ?? "") ?? 0);
+    }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        SchedulesList.AddRange(Server.GetSchedules());
+        Server.AddSchedules(SchedulesList);
+        SelectedSchedule = SchedulesList.FirstOrDefault();
+        Schedules.SetFilter(filter =>
+        {
+            if (string.IsNullOrWhiteSpace(SearchText)) return true;
+            return filter.Name.Contains(SearchText, StringComparison.OrdinalIgnoreCase);
+        });
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            StateHasChanged();
+        }
+    }
+
+    private void AddSchedule_Click()
+    {
+        SchedulesList.Add(new Schedule());
+        SelectedSchedule = SchedulesList.LastOrDefault();
+        StateHasChanged();
+    }
+
+    private void ScheduleModeChanged(ScheduleMode mode)
+    {
+        SelectedSchedule?.mode = mode;
+        StateHasChanged();
+    }
+
+    private void DeleteSchedule()
+    {
+        SchedulesList.Remove(SelectedSchedule);
+        SelectedSchedule = null;
+        StateHasChanged();
+    }
+
+    private void Search(string value)
+    {
+        SearchText = value;
+        Search();
+    }
+
+    private void Search()
+    {
+        Schedules.RefreshFilter();
+        StateHasChanged();
+    }
+}
