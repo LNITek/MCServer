@@ -9,7 +9,8 @@
 
   <ItemGroup>
     <PackageReference Include="Cronos" Version="0.13.0" />
-    <PackageReference Include="ExtraFunctions" Version="2.0.0.51-Pre-release" />
+    <PackageReference Include="ExtraFunctions" Version="2.0.0.42-Pre-release" />
+    <PackageReference Include="Markdig" Version="1.2.0" />
     <PackageReference Include="MudBlazor" Version="9.4.0" />
     <PackageReference Include="MudBlazor.FontIcons.MaterialIcons" Version="1.4.0" />
     <PackageReference Include="MudBlazor.FontIcons.MaterialSymbols" Version="1.4.0" />

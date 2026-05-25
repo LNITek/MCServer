@@ -25,16 +25,18 @@
             <MudNavLink Href="/" Icon="@Icons.Rounded.AreaChart">Dashboard</MudNavLink>
 
             <MudNavGroup Icon="@Icons.Rounded.AllInbox" Title="Servers" Expanded="true">
-                <MudNavLink Icon="@Icons.Rounded.Terminal" Href="/console">Console</MudNavLink>
-                <MudNavLink Icon="@Icons.Rounded.HomeRepairService" Href="/props">Properties</MudNavLink>
-                <MudNavLink Icon="@Icons.Rounded.AdminPanelSettings" Href="/player-settings">Player Settings</MudNavLink>
-                <MudNavLink Icon="@Icons.Rounded.Timer" Href="/schedules">Schedule</MudNavLink>
+                <MudNavGroup Icon="@Icons.Rounded.DisabledByDefault" Title="Default" Expanded="true">
+                    <MudNavLink Icon="@Icons.Rounded.Terminal" Href="/console">Console</MudNavLink>
+                    <MudNavLink Icon="@Icons.Rounded.HomeRepairService" Href="/props">Properties</MudNavLink>
+                    <MudNavLink Icon="@Icons.Rounded.AdminPanelSettings" Href="/player-settings">Player Settings</MudNavLink>
+                    <MudNavLink Icon="@Icons.Rounded.Timer" Href="/schedules">Schedule</MudNavLink>
+                </MudNavGroup>
             </MudNavGroup>
 
             <MudDivider Class="my-2" />
 
-            <MudNavLink Icon="@Icons.Rounded.StickyNote2" Href="/notes">How To</MudNavLink>
-            <MudNavLink Icon="@Icons.Rounded.EventNote" Href="/releases">Release Notes</MudNavLink>
+            <MudNavLink Icon="@Icons.Rounded.StickyNote2" Href="/docs/notes">How To</MudNavLink>
+            <MudNavLink Icon="@Icons.Rounded.EventNote" Href="/docs/releases">Release Notes</MudNavLink>
             <MudNavLink Icon="@Icons.Rounded.Settings" Href="/settings">Settings</MudNavLink>
         </MudNavMenu>
     </MudDrawer>

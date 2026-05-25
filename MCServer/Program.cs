@@ -8,10 +8,14 @@ namespace MCServer;
 
 public class Program
 {
+    public static string RootPath = Path.GetFullPath("./wwwroot/");
+    
 #if DEBUG
-    public const string ServerPath = "..\\Data\\Bedrock Server\\";
+    // public static string ServerPath = Path.GetFullPath(IsWin ? "../Data/Bedrock Server/" : 
+    //     "/home/egbert/Documents/Projects/C#/MCServer/Data/Bedrock Server");
+    public static string ServerPath = Path.GetFullPath("./../Data/Bedrock Server/");
 #else
-    public static string ServerPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MCServer\\Bedrock Server\\");
+    public static string ServerPath = Path.GetFullPath(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MCServer/Bedrock Server/"));
 #endif
 
     public static bool IsWin => OperatingSystem.IsWindows();

@@ -11,12 +11,12 @@ public static class SchedulerService
 
     public static List<Schedule> GetSchedules(this MCBedrockServer server)
     {
-        if (!File.Exists(server.ServerPath + "\\schedules.json"))
+        if (!File.Exists(server.ServerPath + "/schedules.json"))
             return [];
         //Program.NotifyUser("Server Schedules: could not find server schedules file!", MudBlazor.Severity.Error);
 
         var Schedules = JsonSerializer.Deserialize<Schedule[]>
-            (File.Open(server.ServerPath + "\\schedules.json", FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
+            (File.Open(server.ServerPath + "/schedules.json", FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
 
         return [.. Schedules ?? []];
     }

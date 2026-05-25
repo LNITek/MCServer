@@ -22,7 +22,7 @@ public static class ProcessService
             server.ServerThread.Start();
         }
     }
-
+    
     private static void Start(this MCBedrockServer server)
     {
         server.StartupDate = DateTime.Today;
@@ -41,13 +41,19 @@ public static class ProcessService
         server.ServerProcess.StartInfo.UseShellExecute = false;
         server.ServerProcess.StartInfo.RedirectStandardInput = true;
         server.ServerProcess.StartInfo.RedirectStandardOutput = true;
-        server.ServerProcess.StartInfo.FileName = Path.GetFullPath(Path.Combine(server.ServerPath, "bedrock_server" + (Program.IsWin ? ".exe" : "")));
+        server.ServerProcess.StartInfo.RedirectStandardError = true;
+        var exe =  Path.Combine(server.ServerPath);
+        server.ServerProcess.StartInfo.WorkingDirectory = exe;
+        server.ServerProcess.StartInfo.FileName = Path.Combine(exe, "bedrock_server" + (Program.IsWin ? ".exe" : ""));
+        if (!Program.IsWin)
+            server.ServerProcess.StartInfo.EnvironmentVariables["LD_LIBRARY_PATH"] = ".";
         server.ServerProcess.StartInfo.StandardInputEncoding = Encoding.Latin1;
         server.ServerProcess.StartInfo.StandardOutputEncoding = Encoding.Latin1;
         server.ServerProcess.StartInfo.CreateNoWindow = true;
-        server.ServerProcess.StartInfo.ErrorDialog = true;
+        server.ServerProcess.StartInfo.ErrorDialog = false;
 
-        server.ServerProcess.OutputDataReceived += Write;
+        server.ServerProcess.OutputDataReceived += WriteOut;
+        server.ServerProcess.ErrorDataReceived += WriteError;
         server.ServerProcess.Start();
         server.SetAsChildProcess();
         server.ServerProcess.BeginOutputReadLine();
@@ -55,7 +61,8 @@ public static class ProcessService
         server.ServerProcess.WaitForExit();
         server.CommandRunning = true;
         server.ServerProcess.CancelOutputRead();
-        server.ServerProcess.OutputDataReceived -= Write;
+        server.ServerProcess.OutputDataReceived -= WriteOut;
+        server.ServerProcess.ErrorDataReceived -= WriteError;
         server.ServerProcess.Close();
         if (server.OutputList.Any(x => x.Line.Contains("Exiting program") && x.Type == Color.Error /*x.Contains("ERROR")*/))
         {
@@ -72,7 +79,12 @@ public static class ProcessService
         server.CommandRunning = false;
         //server.OutputList.Clear();
 
-        void Write(object sender, DataReceivedEventArgs e)
+        void WriteError(object sender, DataReceivedEventArgs e)
+        {
+            var Out = e.Data ?? "{NULL}";
+            server.WriteDisplayLine(Out, Color.Error, true);
+        }
+        void WriteOut(object sender, DataReceivedEventArgs e)
         {
             var Out = e.Data ?? "{NULL}";
 

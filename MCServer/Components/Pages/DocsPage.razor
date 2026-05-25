@@ -1,0 +1,34 @@
+@* @page "/docs}" *@
+@* @page "/docs/{type}" *@
+@page "/docs/{type?}/{server?}"
+
+@inject MCBedrockServer Server
+
+<PageTitle>Documentation</PageTitle>
+
+<div style="flex-grow:1; margin:16px 0px; overflow:auto;">
+    @HTMLContent
+</div>
+
+@code {
+    private MarkupString HTMLContent;
+
+    [Parameter] public string type { get; set; } = "";
+    [Parameter] public string server { get; set; } = "host";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var GServer = string.IsNullOrWhiteSpace(server) ? null : Server;
+        
+        string html = DocsService.Docs404;
+        switch (type)
+        {
+            case "notes" when GServer is null: html = DocsService.GetReleaseNotes(); break;
+            case "releases" when GServer is null: html = DocsService.GetReadMe(); break;
+            case "notes": html = GServer.GetReleaseNotes(); break;
+            case "releases": html = GServer.GetReleaseNotes(); break;
+        }
+
+        HTMLContent = new(html);
+    }
+}

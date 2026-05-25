@@ -21,7 +21,7 @@ public partial class MCBedrockServer : INotifyPropertyChanged, IDisposable
     public StackList OutputList { get; set; } = new(100);
     public Process ServerProcess = new();
     public Thread ServerThread { get; set; }
-    public Semaphore CommandQue = new(1, 1, "CommandThreadQue");
+    public Semaphore CommandQue = new(1, 1);
     private IntPtr _jobHandle = IntPtr.Zero;
 
     public MCBedrockServer(string path)
