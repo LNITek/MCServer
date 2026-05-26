@@ -1,0 +1,135 @@
+﻿@page "/packets"
+@inject MCBedrockServer Server
+
+<PageTitle>Packet Rate Limits</PageTitle>
+
+<style>
+    .mud-input-control {
+        border: 0;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex: 0 1 auto;
+        max-width: 100%;
+        position: relative;
+        flex-direction: column;
+        vertical-align: top;
+    }
+
+    .mud-select {
+        display: flex;
+        flex-grow: 0;
+        position: relative;
+    }
+</style>
+
+<div style="height:100%; display:flex; flex-direction:row;">
+    <MudStack Spacing="3" Style="min-width:25%; max-width:30%; width: 100%;">
+        <MudTextField T="string" @bind-Value="SearchText" Placeholder="Search..." Clearable Variant="Variant.Outlined"
+                      Adornment="Adornment.End" AdornmentIcon="@Icons.Rounded.Search" OnAdornmentClick="@Search"
+                      TextChanged="@(s => Search(s))">
+        </MudTextField>
+
+        <MudButton Size="Size.Large" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Rounded.SelectAll" OnClick="SelectDefault_Click">Select Default</MudButton>
+
+        <MudList T="PacketConfig.Limit" SelectionMode="SelectionMode.SingleSelection" @bind-SelectedValue="SelectedLimit" Style="overflow:auto; height:100%">
+            @foreach (var limit in Limits)
+            {
+                <MudListItem Value="@limit">
+                    <ChildContent>
+                        <MudStack Spacing="1">
+                            <MudText Typo="Typo.h6">@($"[{limit.PacketIds}]")</MudText>
+                            <MudText Typo="Typo.body2" Class="ml-4">@limit.algorithm.name</MudText>
+                        </MudStack>
+                    </ChildContent>
+                </MudListItem>
+            }
+        </MudList>
+        <MudButton Size="Size.Large" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Rounded.Add" OnClick="AddLimit_Click">Add Rate Limit</MudButton>
+    </MudStack>
+
+    <MudDivider Vertical Class="mx-4" />
+
+    <MudStack Style="flex-grow:1; overflow:auto;">
+        @* <MudAlert Variant="Variant.Text" Severity="Severity.Warning">These changes is only in an effect after a restart!</MudAlert> *@
+
+        @if (SelectedLimit is not null)
+        {
+            @if (SelectedLimit.minecraftPacketIds is not null)
+            {
+                <MudTextField Variant="Variant.Outlined" T="string" Label="Packet IDs" @bind-Value="SelectedLimit.PacketIds" HelperText="List of packet to limit by there IDs. Ex: 193;4"></MudTextField>
+            }
+
+            <MudText Typo="Typo.h6">Algorithm</MudText>
+            <MudSelect Variant="Variant.Outlined" T="PacketConfig.AlgorithmType" Label="Name" @bind-Value="SelectedLimit.algorithm.Type" FullWidth>
+                @foreach (var type in Enum.GetValues<PacketConfig.AlgorithmType>())
+                {
+                    <MudSelectItem Value="type">@type.ToString()</MudSelectItem>
+                }
+            </MudSelect>
+            <MudNumericField Variant="Variant.Outlined" T="float" Label="Drain Rate/s" @bind-Value="SelectedLimit.algorithm.Parameters.drainRatePerSec" Min="0f" Max="10000f"></MudNumericField>
+            <MudNumericField Variant="Variant.Outlined" T="uint" Label="Max Bucket Size" @bind-Value="SelectedLimit.algorithm.Parameters.maxBucketSize" Min="1" Max="10000"></MudNumericField>
+        }
+        else
+        {
+            <MudAlert Variant="Variant.Text" Severity="Severity.Info">Select a rate limit or create a new one.</MudAlert>
+        }
+    </MudStack>
+</div>
+
+@code {
+    public PacketConfig Config;
+    public ExList<PacketConfig.Limit> Limits;
+    public string SearchText { get; set; } = string.Empty;
+    public PacketConfig.Limit? SelectedLimit = default;
+
+    public PacketPage()
+    {
+    }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        Config = Server.GetPacketConfig();
+        Limits = new(Config.limitGroups);
+        SelectedLimit = Config.DefaultLimit;
+
+        Limits.SetFilter(filter =>
+        {
+            if (string.IsNullOrWhiteSpace(SearchText) || !uint.TryParse(SearchText, out var SearchID)) return true;
+            return filter.minecraftPacketIds.Contains(SearchID);
+        });
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            StateHasChanged();
+        }
+    }
+
+    private void SelectDefault_Click()
+    {
+        SelectedLimit = Config.DefaultLimit;
+    }
+
+    private void AddLimit_Click()
+    {
+        Config.limitGroups.Add(new());
+        SelectedLimit = Config.limitGroups.LastOrDefault();
+        StateHasChanged();
+    }
+
+    private void Search(string value)
+    {
+        SearchText = value;
+        Search();
+    }
+
+    private void Search()
+    {
+        Limits.RefreshFilter();
+        StateHasChanged();
+    }
+}

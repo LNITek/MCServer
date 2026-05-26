@@ -43,6 +43,9 @@ TODO
 | server.properties File Editor			| :wavy_dash:			| :x:					|
 | Allow List File Editor				| :wavy_dash:			| :x:					|
 | Permissions File Editor				| :wavy_dash:			| :x:					|
+| Packet Rate Limit Editor				| :wavy_dash:			| :x:					|
+| Profanity White List Editor			| :x:					| :x:					|
+| Documentation Viewer					| :heavy_check_mark:	| :x:					|
 | Dynamic DNS Manager					| :x:					| :x:					|
 | Resource / Behavior Packs Manager		| :x:					| :x:					|
 | World Trim							| :x:					| :x:					|

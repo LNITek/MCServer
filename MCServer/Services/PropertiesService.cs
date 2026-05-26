@@ -112,4 +112,19 @@ public static class PropertiesService
         return [.. permissions?.OfType<Permission>() ?? []];
     }
     #endregion
+
+    #region Packet Config
+
+    public static PacketConfig GetPacketConfig(this MCBedrockServer server)
+    {
+        if (!File.Exists(server.ServerPath + "/packetlimitconfig.json"))
+        {
+            Program.NotifyUser("Packet Config: Could not find config file!", MudBlazor.Severity.Error);
+            return new();
+        }
+
+        return JsonSerializer.Deserialize<PacketConfig>
+            (File.Open(server.ServerPath + "/packetlimitconfig.json", FileMode.Open, FileAccess.Read, FileShare.ReadWrite)) ?? new();
+    }
+    #endregion
 }

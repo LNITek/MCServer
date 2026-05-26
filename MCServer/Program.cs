@@ -8,7 +8,7 @@ namespace MCServer;
 
 public class Program
 {
-    public static string RootPath = Path.GetFullPath("./wwwroot/");
+    public static string AssetsPath = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(Environment.ProcessPath) ?? ".","Assets"));
     
 #if DEBUG
     // public static string ServerPath = Path.GetFullPath(IsWin ? "../Data/Bedrock Server/" : 

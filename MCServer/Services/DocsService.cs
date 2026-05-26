@@ -7,7 +7,7 @@ public static class DocsService
 {
     public static string Get404()
     {
-        var filePath = Path.Combine(Program.RootPath, "Docs_404.html");
+        var filePath = Path.Combine(Program.AssetsPath, "Docs_404.html");
         return File.ReadAllText(filePath);
     }
 
@@ -33,7 +33,7 @@ public static class DocsService
     
     public static string GetReadMe()
     {
-        return GetHTML(Path.Combine(Program.RootPath, "README.md"));
+        return GetHTML(Path.Combine(Program.AssetsPath, "README.md"));
     }
     
     public static string GetReadMe(this MCBedrockServer server)
@@ -43,7 +43,7 @@ public static class DocsService
     
     public static string GetReleaseNotes()
     {
-        return GetHTML(Path.Combine(Program.RootPath, "ChangeLog.md"));
+        return GetHTML(Path.Combine(Program.AssetsPath, "ChangeLog.md"));
     }
     
     public static string GetReleaseNotes(this MCBedrockServer server)

@@ -17,20 +17,33 @@
     <MudDrawer @bind-Open="@_open" Elevation="1">
         <MudDrawerHeader>
             <MudStack Row="true" Spacing="3" AlignItems="AlignItems.Center">
-                <MudImage Src="Assets/MCServer.png" Alt="Icon" Width="32" Height="32" ObjectFit="ObjectFit.Contain"/>
+                <MudImage Src="favicon.png" Alt="Icon" Width="32" Height="32" ObjectFit="ObjectFit.Contain" />
                 <MudText Typo="Typo.h6">MCServer</MudText>
             </MudStack>
         </MudDrawerHeader>
         <MudNavMenu>
-            <MudNavLink Href="/" Icon="@Icons.Rounded.AreaChart">Dashboard</MudNavLink>
+            <MudNavLink Href="/" Icon="@Icons.Rounded.Dashboard">Dashboard</MudNavLink>
 
-            <MudNavGroup Icon="@Icons.Rounded.AllInbox" Title="Servers" Expanded="true">
-                <MudNavGroup Icon="@Icons.Rounded.DisabledByDefault" Title="Default" Expanded="true">
-                    <MudNavLink Icon="@Icons.Rounded.Terminal" Href="/console">Console</MudNavLink>
-                    <MudNavLink Icon="@Icons.Rounded.HomeRepairService" Href="/props">Properties</MudNavLink>
-                    <MudNavLink Icon="@Icons.Rounded.AdminPanelSettings" Href="/player-settings">Player Settings</MudNavLink>
-                    <MudNavLink Icon="@Icons.Rounded.Timer" Href="/schedules">Schedule</MudNavLink>
-                </MudNavGroup>
+            <MudNavGroup Icon="@Icons.Rounded.Dns" Expanded="true">
+                <TitleContent>
+                    <a href="/servers">Servers</a>
+                    @* <MudButton Variant="Variant.Text" Style="padding: 0px 2px; text-transform:none; justify-content: start; width:100%;" Href="/servers">Servers</MudButton> *@
+                </TitleContent>
+                <ChildContent>
+                    <MudNavGroup Icon="@Icons.Rounded.Monitor" Title="Default" Expanded="true">
+                        <TitleContent>
+                            <a href="/overview">Default</a>
+                            @* <MudButton Variant="Variant.Text" Style="padding: 0px 2px; text-transform:none; justify-content: start; width:100%;" Href="/overview">Default</MudButton> *@
+                        </TitleContent>
+                        <ChildContent>
+                            <MudNavLink Icon="@Icons.Rounded.Terminal" Href="/console">Console</MudNavLink>
+                            <MudNavLink Icon="@Icons.Rounded.HomeRepairService" Href="/props">Properties</MudNavLink>
+                            <MudNavLink Icon="@Icons.Rounded.AdminPanelSettings" Href="/player-settings">Player Settings</MudNavLink>
+                            <MudNavLink Icon="@Icons.Rounded.Backpack" Href="/packets">Packet Configs</MudNavLink>
+                            <MudNavLink Icon="@Icons.Rounded.Timer" Href="/schedules">Schedules</MudNavLink>
+                        </ChildContent>
+                    </MudNavGroup>
+                </ChildContent>
             </MudNavGroup>
 
             <MudDivider Class="my-2" />
@@ -74,9 +87,11 @@
     private string PageHeader => Nav.Uri[(Nav.Uri.LastIndexOf('/') + 1)..] switch
     {
         "" => "Dashboard",
+        "overview" => "Overview",
         "console" => "Console",
         "props" => "Properties",
         "player-settings" => "Player Settings",
+        "packets" => "Packet Rate Limit Config",
         "schedules" => "Schedule",
         "notes" => "How To",
         "releases" => "Release Notes",

@@ -8,6 +8,18 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Content Include="..\ChangeLog.md" Link="Assets\ChangeLog.md">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\README.md" Link="Assets\README.md">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Docs_404.html">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Cronos" Version="0.13.0" />
     <PackageReference Include="ExtraFunctions" Version="2.0.0.42-Pre-release" />
     <PackageReference Include="Markdig" Version="1.2.0" />

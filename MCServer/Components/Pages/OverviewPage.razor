@@ -1,0 +1,32 @@
+﻿@page "/overview"
+@inject MCBedrockServer Server
+@inject IJSRuntime JS
+
+<PageTitle>Overview</PageTitle>
+
+<div style="flex-grow:1; overflow:auto;">
+    <MudTabs Elevation="0" Rounded>
+        <MudTabPanel Text="Status">
+
+        </MudTabPanel>
+        <MudTabPanel Text="Player Logs">
+
+        </MudTabPanel>
+        <MudTabPanel Text="Server Logs">
+
+        </MudTabPanel>
+        <MudTabPanel Text="Packet Statistics">
+
+        </MudTabPanel>
+    </MudTabs>
+</div>
+
+@code {
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            StateHasChanged();
+        }
+    }
+}
