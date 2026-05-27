@@ -1,0 +1,28 @@
+@page "/settings"
+@using Microsoft.Extensions.Options
+@inject MCBedrockServer Server
+@inject IJSRuntime JS
+@inject IOptions<AppSettings> Config;
+
+<PageTitle>MCServer - Settings</PageTitle>
+
+<MudStack Spacing="6">
+    <MudText Typo="Typo.h6">Personalisation</MudText>
+
+    <MudText Typo="Typo.h6">General</MudText>
+    <MudTextField Variant="Variant.Outlined" T="string" Label="Global Backup Path" @bind-Value="Settings.BackupPath"
+                  HelperText="The global location for storing world backups. Property helpers:
+{ServerPath} : Path to server files
+{ServerName} : The server name">
+    </MudTextField>
+</MudStack>
+
+@code {
+    public AppSettings Settings;
+
+    protected override void OnInitialized()
+    {
+        Settings = Config.Value;
+        base.OnInitialized();
+    }
+}

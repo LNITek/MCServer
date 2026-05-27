@@ -2,7 +2,7 @@
 @inject MCBedrockServer Server
 @using System.Collections.ObjectModel
 
-<PageTitle>Schedules</PageTitle>
+<PageTitle>MCServer - Schedules</PageTitle>
 
 <style>
     .mud-input-control {
@@ -33,7 +33,8 @@
     }
 
     .mud-input-control.mud-input-control-boolean-input {
-        flex: fit-content;
+        /*flex: fit-content;*/
+        width: auto;
         margin: 0;
     }
 </style>
@@ -67,7 +68,7 @@
 
     <MudDivider Vertical Class="mx-4" />
 
-    <MudStack Style="flex-grow:1; overflow:auto;">
+    <MudStack Style="flex-grow:1; overflow:hidden;">
         <MudAlert Variant="Variant.Text" Severity="Severity.Warning">These changes is only in an effect after a restart!</MudAlert>
 
         @if (SelectedSchedule is not null)
@@ -80,9 +81,9 @@
                         <MudSelectItem Value="mode">@mode.ToString()</MudSelectItem>
                     }
                 </MudSelect>
-                <MudSwitch T="bool" @bind-Value="SelectedSchedule.Enabled" Label="Enabled" />
+                <MudSwitch T="bool" @bind-Value="SelectedSchedule.Enabled" Label="Enabled"/>
+                <MudSpacer></MudSpacer>
                 <MudIconButton Variant="Variant.Text" Color="Color.Error" Icon="@Icons.Rounded.Delete" OnClick="DeleteSchedule">
-
                 </MudIconButton>
             </MudStack>
 

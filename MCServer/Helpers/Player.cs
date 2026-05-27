@@ -12,20 +12,6 @@ namespace MCServer.Helpers
         Visitor,
     }
 
-    public class AllowList()
-    {
-        public bool ignoresPlayerLimit { get; set; }
-        public string name { get; set; }
-        public string xuid { get; set; }
-    }
-
-    public class Permission
-    {
-        public string permission { get; set; }
-        public string name { get; set; }
-        public string xuid { get; set; }
-    }
-
     public partial class Player : INotifyPropertyChanged
     {
         [NotifyChanged]
@@ -33,20 +19,37 @@ namespace MCServer.Helpers
         [NotifyChanged([nameof(IsVerified)])]
         string xuid { get; set; }
         [NotifyChanged([nameof(PlayerLimitColour)])]
-        bool allowList { get; set; } = false;
+        bool whiteList { get; set; } = false;
         [NotifyChanged([nameof(PlayerLimitColour)])]
         bool ignoresPlayerLimit { get; set; } = false;
         [NotifyChanged]
-        PlayerPermission permission { get; set; }
+        PlayerPermission permissions { get; set; }
 
+        public bool Ban { get; set; } = false;
+        public DateTime? BanTime { get; set; } = null;
+        public string BanResion { get; set; } = string.Empty;
+        public DateTime? LastLogin { get; set; } = null;
+        public TimeSpan TotalPlayTime { get; set; } = TimeSpan.Zero;
+        
         public bool IsVerified => !string.IsNullOrWhiteSpace(xuid);
         public Color PlayerLimitColour
         {
             get
             {
-                if (!AllowList) return Color.Secondary;
+                if (Ban) return Color.Error;
+                if (!WhiteList) return Color.Secondary;
                 if (IgnoresPlayerLimit) return Color.Success;
                 return Color.Info;
+            }
+        }
+
+        public string DisplayName
+        {
+            get
+            {
+                if (!string.IsNullOrWhiteSpace(xuid)) return Xuid;
+                if (!string.IsNullOrWhiteSpace(Name)) return Name;
+                return "";
             }
         }
 
@@ -54,17 +57,54 @@ namespace MCServer.Helpers
         {
             this.Name = Name;
             this.Xuid = Xuid;
-            this.Permission = Permission;
+            this.Permissions = Permission;
         }
 
         public Player()
         {
             Name = "NewPlayer"; 
             Xuid = string.Empty;
-            Permission = PlayerPermission.Default;
+            Permissions = PlayerPermission.Default;
         }
 
-        public AllowList ToAllowList() => new() { name = name, xuid = xuid, ignoresPlayerLimit = ignoresPlayerLimit };
-        public Permission ToPermission() => new() { permission = Permission.ToString().ToLower(), xuid = xuid };
+        public AllowList AsAllowList() => new() { name = name, xuid = xuid, ignoresPlayerLimit = ignoresPlayerLimit };
+        public Permission AsPermission() => new() { permission = Permissions.ToString().ToLower(), name = name, xuid = xuid };
+        public Config AsConfig() => new()
+        {
+            Ban = Ban, 
+            BanTime = BanTime, 
+            BanResion = BanResion, 
+            LastLogin = LastLogin, 
+            TotalPlayTime = TotalPlayTime, 
+            name = name, 
+            xuid = xuid
+        };
+        
+        public class AllowList()
+        {
+            public bool ignoresPlayerLimit { get; set; }
+            public string name { get; set; }
+            public string xuid { get; set; }
+        }
+
+        public class Permission
+        {
+            public string permission { get; set; }
+            public string name { get; set; }
+            public string xuid { get; set; }
+        }
+        
+        public class Config
+        {
+            public bool Ban { get; set; }
+            public DateTime? BanTime { get; set; }
+            public string BanResion { get; set; }
+            
+            public DateTime? LastLogin { get; set; }
+            public TimeSpan TotalPlayTime { get; set; }
+            
+            public string name { get; set; }
+            public string xuid { get; set; }
+        }
     }
 }

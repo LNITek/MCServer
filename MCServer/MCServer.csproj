@@ -20,6 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Blazor.LocalStorage" Version="10.0.0" />
     <PackageReference Include="Cronos" Version="0.13.0" />
     <PackageReference Include="ExtraFunctions" Version="2.0.0.42-Pre-release" />
     <PackageReference Include="Markdig" Version="1.2.0" />

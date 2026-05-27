@@ -5,17 +5,31 @@ using ExtraFunctions.Extras;
 
 namespace MCServer.Helpers;
 
+public enum PropertyEditMode
+{
+    None,
+    Overwrite,
+    Custom,
+}
+
 public partial class Property : INotifyPropertyChanged
 {
     [NotifyChanged]
     string name { get; set; } = string.Empty;
     [NotifyChanged("Value")]
     string Val { get; set; } = string.Empty;
-    public List<string> Comments { get; set; } = [];
+    [NotifyChanged]
+    IEnumerable<string> comments { get; set; } = [];
 
-    public double Order { get; set; } = 0;
+    public double Order { get; init; } = 0;
+    public PropertyEditMode Mode { get; set; } = PropertyEditMode.None;
 
-    public string Desc => string.Join("\r\n", Comments);
+    public string Desc
+    {
+        get => string.Join("\n", Comments);
+        set => Comments = [..value.Split("\n")];
+    }
+
     public string ShortDesc
     {
         get
@@ -32,13 +46,25 @@ public partial class Property : INotifyPropertyChanged
     {
         this.Name = Name;
         this.Value = Value;
-        this.Comments.AddRange(Comments);
+        this.Comments = Comments;
+        Subscribe();
     }
 
     public Property()
     {
-        Name = "NewProperty";
+        Name = "new-property";
         Value = "";
-        Comments.Add("# This is a new Property");
+        Comments = ["# This is a new property"];
+        Mode = PropertyEditMode.Custom;
+        Subscribe();
+    }
+
+    private void Subscribe()
+    {
+        PropertyChanged += (s, e) =>
+        {
+            if (Mode == PropertyEditMode.None)
+                Mode = PropertyEditMode.Overwrite;
+        };
     }
 }

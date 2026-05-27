@@ -2,6 +2,7 @@
 using System.Text;
 using ExtraFunctions.Extras;
 using MCServer.Components;
+using MCServer.Helpers;
 using MCServer.Server;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
@@ -92,6 +93,16 @@ public static class ProcessService
             {
                 server.WriteLine("say §eWelcome To MCServer!");
                 server.CommandRunning = false;
+            }
+
+            if (Out.Contains("Player connected", StringComparison.OrdinalIgnoreCase))
+            {
+                var props = Out.Split([',', ':']);
+                var name = props[1];
+                var xuid = props[3];
+
+                if (server.BanList.FirstOrDefault(x => x.Name == name || x.Xuid == xuid) is Player player)
+                    server.WriteLine($"kick {player.DisplayName} You are currently ban from this server until {player.BanTime?.ToString() ?? "Indefentitly"} for: {player.BanResion}");
             }
 
             if (Out.Contains("INFO"))

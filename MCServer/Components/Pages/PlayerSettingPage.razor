@@ -1,8 +1,9 @@
 ﻿@page "/player-settings"
+@implements IDisposable
 @inject MCBedrockServer Server
 @using System.Collections.ObjectModel
 
-<PageTitle>Player Settings</PageTitle>
+<PageTitle>MCServer - Player Settings</PageTitle>
 
 <style>
     .mud-input-control {
@@ -37,7 +38,7 @@
                 <MudListItem Value="@player">
                     <ChildContent>
                         <MudStack Spacing="1" Row AlignItems="AlignItems.Center">
-                            <MudChip Color="@player.PlayerLimitColour" Text="@player.Permission.ToString()"/>
+                            <MudChip Color="@player.PlayerLimitColour" Text="@player.Permissions.ToString()"/>
 
                             <MudStack Spacing="0">
                                 <MudText Typo="Typo.h6">@player.Name</MudText>
@@ -62,7 +63,7 @@
             <MudTextField Variant="Variant.Outlined" T="string" Label="XUID" @bind-Value="SelectedPlayer.Xuid"></MudTextField>
 
             <MudText Typo="Typo.h6">Properties</MudText>
-            <MudSelect Variant="Variant.Outlined" T="PlayerPermission" Label="Permission" @bind-Value="SelectedPlayer.Permission" FullWidth>
+            <MudSelect Variant="Variant.Outlined" T="PlayerPermission" Label="Permission" @bind-Value="SelectedPlayer.Permissions" FullWidth>
                 @foreach (var permission in Enum.GetValues<PlayerPermission>())
                 {
                     <MudSelectItem Value="permission">@permission.ToString()</MudSelectItem>
@@ -70,8 +71,8 @@
             </MudSelect>
 
             <MudStack Spacing="1" Row AlignItems="AlignItems.Center">
-                <MudCheckBox T="bool" @bind-Value="SelectedPlayer.AllowList" Label="Add to allow list" />
-                <MudSwitch T="bool" @bind-Value="SelectedPlayer.IgnoresPlayerLimit" Label="Ignores Player Limit" Disabled="@(!SelectedPlayer.AllowList)" />
+                <MudCheckBox T="bool" @bind-Value="SelectedPlayer.WhiteList" Label="Add to allow list" />
+                <MudSwitch T="bool" @bind-Value="SelectedPlayer.IgnoresPlayerLimit" Label="Ignores Player Limit" Disabled="@(!SelectedPlayer.WhiteList)" />
             </MudStack>
         } else
         {
@@ -113,6 +114,17 @@
         }
     }
 
+    public void Dispose()
+    {
+        Save();
+    }
+    
+    private void Save()
+    {
+        Server.SetPlayers(PlayersList);
+        Server.RefreshPlayerProperties();
+    }
+
     private void AddPlayer_Click()
     {
         PlayersList.Add(new());
@@ -120,6 +132,13 @@
         StateHasChanged();
     }
 
+    private void DeleteProperty_Click()
+    {
+        PlayersList.Remove(SelectedPlayer);
+        SelectedPlayer = null;
+        Save();
+        StateHasChanged();
+    }
     private void Search(string value)
     {
         SearchText = value;

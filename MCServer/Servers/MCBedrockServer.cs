@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using ExtraFunctions.ExGenerators;
 using MCServer.Helpers;
+using MCServer.Services;
 using MudBlazor;
 
 namespace MCServer.Server;
@@ -23,7 +24,10 @@ public partial class MCBedrockServer : INotifyPropertyChanged, IDisposable
     public Thread ServerThread { get; set; }
     public Semaphore CommandQue = new(1, 1);
     private IntPtr _jobHandle = IntPtr.Zero;
+    private List<Player> _banList;
 
+    public List<Player> BanList { get; set; } = [];
+    
     public MCBedrockServer(string path)
     {
         ServerPath = path;
@@ -32,6 +36,18 @@ public partial class MCBedrockServer : INotifyPropertyChanged, IDisposable
     public void RunCommand(string command)
     {
 
+    }
+
+    public void RefreshPlayerProperties()
+    {
+        WriteLine("allowlist reload");
+        WriteLine("permission reload");
+        BanList = this.GetBanList(BanList);
+    }
+    
+    public void RefreshPacketConfig()
+    {
+        WriteLine("reloadpacketlimitconfig");
     }
 
     public void WriteLine(string Line) => ServerProcess.StandardInput.WriteLine(Line);

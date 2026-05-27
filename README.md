@@ -33,30 +33,32 @@ TODO
 | Docker	| :x:					|
 
 ## Feature Support
-| Feature								| Bedrock				| Java					|
-| -----									| -----					| -----					|
-| Auto Minecraft Updater				| :x:					| :x:					|
-| Console Display						| :heavy_check_mark:	| :x:					|
-| User Interface						| :heavy_check_mark:	| :x:					|
-| Console Commands						| :x:					| :x:					|
-| Auto Updater							| :x:					| :x:					|
-| server.properties File Editor			| :wavy_dash:			| :x:					|
-| Allow List File Editor				| :wavy_dash:			| :x:					|
-| Permissions File Editor				| :wavy_dash:			| :x:					|
-| Packet Rate Limit Editor				| :wavy_dash:			| :x:					|
-| Profanity White List Editor			| :x:					| :x:					|
-| Documentation Viewer					| :heavy_check_mark:	| :x:					|
-| Dynamic DNS Manager					| :x:					| :x:					|
-| Resource / Behavior Packs Manager		| :x:					| :x:					|
-| World Trim							| :x:					| :x:					|
-| World Export							| :x:					| :x:					|
-| World Backup System					| :x:					| :x:					|
-| Schedule System						| :wavy_dash:			| :x:					|
-| Power Management						| :heavy_check_mark:	| :x:					|
-| Player Tracker						| :x:					| :x:					|
-| Multi Server / World Support			| :x:					| :x:					|
-| User Management 						| :x:					| :x:					|
-| External Hosting						| :x:					| :x:					|
+| Feature								                     | Bedrock				| Java					|
+|-------------------------------------| -----					| -----					|
+| Auto Minecraft Updater				          | :x:					| :x:					|
+| Console Display						               | :heavy_check_mark:	| :x:					|
+| User Interface						                | :heavy_check_mark:	| :x:					|
+| Console Commands						              | :x:					| :x:					|
+| Auto Updater							                 | :x:					| :x:					|
+| server.properties File Editor			    | :heavy_check_mark:			| :x:					|
+| Allow List File Editor				          | :heavy_check_mark:			| :x:					|
+| Permissions File Editor				         | :heavy_check_mark:			| :x:					|
+| Player Ban Controller				           | :heavy_check_mark:			| :x:					|
+| Packet Rate Limit Editor				        | :wavy_dash:			| :x:					|
+| Profanity White List Editor			      | :x:					| :x:					|
+| Documentation Viewer					           | :heavy_check_mark:	| :x:					|
+| Dynamic DNS Manager					            | :x:					| :x:					|
+| Resource / Behavior Packs Manager		 | :x:					| :x:					|
+| World Trim							                   | :x:					| :x:					|
+| World Export							                 | :x:					| :x:					|
+| World Backup System					            | :x:					| :x:					|
+| Schedule System						               | :wavy_dash:			| :x:					|
+| Power Management						              | :heavy_check_mark:	| :x:					|
+| Player Tracker						                | :x:					| :x:					|
+| Multi Server / World Support			     | :x:					| :x:					|
+| Server / World Version Control			   | :x:					| :x:					|
+| User Management 						              | :x:					| :x:					|
+| External Hosting						              | :x:					| :x:					|
 
 ## Command -Help
 TODO

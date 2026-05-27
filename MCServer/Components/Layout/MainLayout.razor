@@ -1,4 +1,7 @@
-﻿@inherits LayoutComponentBase
+﻿@using System.Text.Json
+@using System.Text.Json.Serialization.Metadata
+@inherits LayoutComponentBase
+@inject ILocalStorageService Storage;
 @inject ISnackbar Snackbar
 @inject NavigationManager Nav
 
@@ -24,13 +27,13 @@
         <MudNavMenu>
             <MudNavLink Href="/" Icon="@Icons.Rounded.Dashboard">Dashboard</MudNavLink>
 
-            <MudNavGroup Icon="@Icons.Rounded.Dns" Expanded="true">
+            <MudNavGroup Icon="@Icons.Rounded.Dns">
                 <TitleContent>
                     <a href="/servers">Servers</a>
                     @* <MudButton Variant="Variant.Text" Style="padding: 0px 2px; text-transform:none; justify-content: start; width:100%;" Href="/servers">Servers</MudButton> *@
                 </TitleContent>
                 <ChildContent>
-                    <MudNavGroup Icon="@Icons.Rounded.Monitor" Title="Default" Expanded="true">
+                    <MudNavGroup Icon="@Icons.Rounded.Monitor" Title="Default">
                         <TitleContent>
                             <a href="/overview">Default</a>
                             @* <MudButton Variant="Variant.Text" Style="padding: 0px 2px; text-transform:none; justify-content: start; width:100%;" Href="/overview">Default</MudButton> *@
@@ -80,6 +83,7 @@
     private void ToggleDarkMode()
     {
         IsDarkMode = !IsDarkMode;
+        Storage.SetItemAsync(nameof(IsDarkMode), IsDarkMode);
     }
 
     private string GetToggleTheme() => IsDarkMode ? Icons.Rounded.LightMode : Icons.Rounded.DarkMode;
@@ -104,7 +108,7 @@
         Program.Snackbar = Snackbar;
         if (firstRender)
         {
-            IsDarkMode = await _mudThemeProvider.GetSystemDarkModeAsync();
+            IsDarkMode = (await Storage.GetItemAsync<bool?>(nameof(IsDarkMode))) ?? await _mudThemeProvider.GetSystemDarkModeAsync();
             StateHasChanged();
         }
     }

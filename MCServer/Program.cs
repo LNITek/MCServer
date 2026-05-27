@@ -32,18 +32,21 @@ public class Program
         var builder = WebApplication.CreateBuilder(args);
 
         // Add services to the container.
-        builder.Services.AddRazorComponents()
+        builder.Services
+            .Configure<AppSettings>(builder.Configuration.GetSection(AppSettings.SettingName))
+            .AddLocalStorageServices()
+            .AddMudServices(config =>
+             {
+                 config.SnackbarConfiguration.PositionClass = Defaults.Classes.Position.BottomRight;
+                 config.SnackbarConfiguration.RequireInteraction = false;
+                 config.SnackbarConfiguration.PreventDuplicates = false;
+                 config.SnackbarConfiguration.NewestOnTop = false;
+                 config.SnackbarConfiguration.ShowCloseIcon = true;
+                 config.SnackbarConfiguration.VisibleStateDuration = 7000;
+                 config.SnackbarConfiguration.SnackbarVariant = Variant.Filled;
+             })
+            .AddRazorComponents()
             .AddInteractiveServerComponents();
-        builder.Services.AddMudServices(config =>
-        {
-            config.SnackbarConfiguration.PositionClass = Defaults.Classes.Position.BottomRight;
-            config.SnackbarConfiguration.RequireInteraction = false;
-            config.SnackbarConfiguration.PreventDuplicates = false;
-            config.SnackbarConfiguration.NewestOnTop = false;
-            config.SnackbarConfiguration.ShowCloseIcon = true;
-            config.SnackbarConfiguration.VisibleStateDuration = 7000;
-            config.SnackbarConfiguration.SnackbarVariant = Variant.Filled;
-        });
 
         var gameServer = new MCBedrockServer(ServerPath);
         builder.Services.AddSingleton(gameServer);

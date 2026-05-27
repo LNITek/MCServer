@@ -1,8 +1,9 @@
 ﻿@page "/props"
+@implements IDisposable
 @inject MCBedrockServer Server
 @using System.Collections.ObjectModel
 
-<PageTitle>Properties</PageTitle>
+<PageTitle>MCServer - Properties</PageTitle>
 
 <style>
     .mud-input-control
@@ -39,7 +40,7 @@
                 </MudListItem>
             }
         </MudList>
-        <MudButton Size="Size.Large" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Rounded.Add">Add Property</MudButton>
+        <MudButton Size="Size.Large" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Rounded.Add" OnClick="AddProperty_Click">Add Property</MudButton>
     </MudStack>
 
     <MudDivider Vertical Class="mx-4"/>
@@ -49,10 +50,34 @@
         
         @if (SelectedProperty is not null)
         {
-            <MudText Typo="Typo.h6">@SelectedProperty.Name</MudText>
-            <MudTextField Variant="Variant.Outlined" T="string" Placeholder="Property Value" @bind-Value="SelectedProperty.Value"></MudTextField>
-            <MudText Typo="Typo.h6">Description</MudText>
-            <MudText Typo="Typo.body1" Style="white-space:pre-line;flex-grow:1; overflow:auto;">@SelectedProperty.Desc</MudText>
+            <MudStack Spacing="1" Row>
+                <MudSpacer/>
+                <MudIconButton Variant="Variant.Text" Color="Color.Info" Icon="@Icons.Rounded.Save" OnClick="Save"/>
+                
+                @if (SelectedProperty.Mode == PropertyEditMode.Overwrite)
+                {
+                    <MudIconButton Variant="Variant.Text" Color="Color.Error" Icon="@Icons.Rounded.RestartAlt" OnClick="ResetProperty_Click"/>
+                }
+                else if (SelectedProperty.Mode == PropertyEditMode.Custom)
+                {
+                    <MudIconButton Variant="Variant.Text" Color="Color.Error" Icon="@Icons.Rounded.Delete" OnClick="DeleteProperty_Click"/>
+                }
+            </MudStack>
+            
+        @if (SelectedProperty.Mode == PropertyEditMode.Custom)
+            {
+                <MudTextField Variant="Variant.Outlined" T="string" Label="Name" @bind-Value="SelectedProperty.Value"></MudTextField>
+                <MudTextField Variant="Variant.Outlined" T="string" Label="Value" @bind-Value="SelectedProperty.Value"></MudTextField>
+                <MudTextField Variant="Variant.Outlined" T="string" Placeholder="Description" @bind-Value="SelectedProperty.Value" MaxLines="25">
+                </MudTextField>
+            }
+            else
+            { 
+                <MudText Typo="Typo.h6">@SelectedProperty.Name</MudText>
+                <MudTextField Variant="Variant.Outlined" T="string" Placeholder="Property Value" @bind-Value="SelectedProperty.Value"></MudTextField>
+                <MudText Typo="Typo.h6">Description</MudText>
+                <MudText Typo="Typo.body1" Style="white-space:pre-line;flex-grow:1; overflow:auto;">@SelectedProperty.Desc</MudText>
+            }
         }
         else
         {
@@ -92,11 +117,38 @@
             StateHasChanged();
         }
     }
-
+    
+    public void Dispose()
+    {
+        Save();
+    }
+    
+    private void Save()
+    {
+        Server.SetProperties(PropertiesList);
+    }
+    
     private void AddProperty_Click()
     {
         PropertiesList.Add(new() { Order = (PropertiesList.LastOrDefault()?.Order ?? -1) + 1 });
         SelectedProperty = PropertiesList.LastOrDefault();
+        StateHasChanged();
+    }
+
+    private void DeleteProperty_Click()
+    {
+        if(SelectedProperty?.Mode != PropertyEditMode.Custom) return;
+        PropertiesList.Remove(SelectedProperty);
+        SelectedProperty = null;
+        Save();
+        StateHasChanged();
+    }
+
+    private void ResetProperty_Click()
+    {
+        if(SelectedProperty?.Mode != PropertyEditMode.Overwrite) return;
+        SelectedProperty.Mode = PropertyEditMode.None;
+        Save();
         StateHasChanged();
     }
 
