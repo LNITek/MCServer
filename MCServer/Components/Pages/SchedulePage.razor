@@ -1,6 +1,7 @@
-﻿@page "/schedules"
-@inject MCBedrockServer Server
-@using System.Collections.ObjectModel
+﻿@page "/servers/{serverId}/schedules"
+@implements IDisposable
+@inject NavigationManager Nav
+@inject GameServers GameServers
 
 <PageTitle>MCServer - Schedules</PageTitle>
 
@@ -69,7 +70,7 @@
     <MudDivider Vertical Class="mx-4" />
 
     <MudStack Style="flex-grow:1; overflow:hidden;">
-        <MudAlert Variant="Variant.Text" Severity="Severity.Warning">These changes is only in an effect after a restart!</MudAlert>
+        @* <MudAlert Variant="Variant.Text" Severity="Severity.Warning">These changes is only in an effect after a restart!</MudAlert> *@
 
         @if (SelectedSchedule is not null)
         {
@@ -82,9 +83,10 @@
                     }
                 </MudSelect>
                 <MudSwitch T="bool" @bind-Value="SelectedSchedule.Enabled" Label="Enabled"/>
-                <MudSpacer></MudSpacer>
-                <MudIconButton Variant="Variant.Text" Color="Color.Error" Icon="@Icons.Rounded.Delete" OnClick="DeleteSchedule">
-                </MudIconButton>
+                <MudSpacer/>
+                
+                <MudIconButton Variant="Variant.Text" Color="Color.Info" Icon="@Icons.Rounded.Save" OnClick="Save"/>
+                <MudIconButton Variant="Variant.Text" Color="Color.Error" Icon="@Icons.Rounded.Delete" OnClick="DeleteSchedule_Click"/>
             </MudStack>
 
             <MudTextField Variant="Variant.Outlined" T="string" Label="Name" @bind-Value="SelectedSchedule.Name"></MudTextField>
@@ -121,55 +123,67 @@
 </div>
 
 @code {
-    public ObservableCollection<Schedule> SchedulesList = [];
-    public ExList<Schedule> Schedules;
+    public ExList<Schedule> Schedules = new([]);
     public string SearchText { get; set; } = string.Empty;
     public Schedule? SelectedSchedule = default;
 
-    public SchedulePage()
-    {
-        Schedules = new(SchedulesList);
-        Schedules.SetSort((a, b) => a.Name?.CompareTo(b.Name ?? "") ?? 0);
-    }
-
-    protected override void OnInitialized()
-    {
-        base.OnInitialized();
-        SchedulesList.AddRange(Server.GetSchedules());
-        Server.AddSchedules(SchedulesList);
-        SelectedSchedule = SchedulesList.FirstOrDefault();
-        Schedules.SetFilter(filter =>
-        {
-            if (string.IsNullOrWhiteSpace(SearchText)) return true;
-            return filter.Name.Contains(SearchText, StringComparison.OrdinalIgnoreCase);
-        });
-    }
-
+    [Parameter] public string serverId { get; set; } = "";
+    public MCBedrockServer Server { get; set; }
+    
     protected override void OnAfterRender(bool firstRender)
     {
         if (firstRender)
         {
+            if (GameServers.FindByID(serverId) is not MCBedrockServer server)
+            {
+                Nav.NavigateTo("\not-found");
+                return;
+            }
+
+            Server = server;
+            Schedules = new(Server.ServerSchedules);
+            SelectedSchedule = Server.ServerSchedules.FirstOrDefault();
+
+            Schedules.SetSort((a, b) => a.Name?.CompareTo(b.Name ?? "") ?? 0);
+            Schedules.SetFilter(filter =>
+            {
+                if (string.IsNullOrWhiteSpace(SearchText)) return true;
+                return filter.Name.Contains(SearchText, StringComparison.OrdinalIgnoreCase);
+            });
+            
             StateHasChanged();
         }
     }
 
+    public void Dispose()
+    {
+        Save();
+    }
+    
+    private void Save()
+    {
+        Server.SetSchedules(Server.ServerSchedules);
+        Server.RefreshSchedules();
+    }
+
     private void AddSchedule_Click()
     {
-        SchedulesList.Add(new Schedule());
-        SelectedSchedule = SchedulesList.LastOrDefault();
+        Server.ServerSchedules.Add(new Schedule());
+        SelectedSchedule = Server.ServerSchedules.LastOrDefault();
+        StateHasChanged();
+    }
+
+    private void DeleteSchedule_Click()
+    {
+        Server.ServerSchedules.Remove(SelectedSchedule);
+        SelectedSchedule = null;
+        Save();
         StateHasChanged();
     }
 
     private void ScheduleModeChanged(ScheduleMode mode)
     {
         SelectedSchedule?.mode = mode;
-        StateHasChanged();
-    }
-
-    private void DeleteSchedule()
-    {
-        SchedulesList.Remove(SelectedSchedule);
-        SelectedSchedule = null;
         StateHasChanged();
     }
 

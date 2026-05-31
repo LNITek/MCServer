@@ -7,7 +7,7 @@ namespace MCServer.Services;
 
 public static class SchedulerService
 {
-    private static readonly List<Timer> GlobalTimers = [];
+    private static readonly Dictionary<string, Timer> GlobalTimers = [];
 
     public static List<Schedule> GetSchedules(this MCBedrockServer server)
     {
@@ -21,17 +21,23 @@ public static class SchedulerService
         return [.. Schedules ?? []];
     }
 
+    public static void SetSchedules(this MCBedrockServer server, IEnumerable<Schedule> schedules)
+    {
+        var json = JsonSerializer.Serialize(schedules);
+        File.WriteAllText(server.ServerPath + "/schedules.json",json);
+    }
+    
     public static void AddSchedules(this MCBedrockServer server, IEnumerable<Schedule> schedules)
     {
         foreach (var item in schedules)
             AddSchedule(server, item);
     }
 
-    public static void AddSchedule(this MCBedrockServer server, Schedule schedule)
+    public static void AddSchedule(this MCBedrockServer server, Schedule Schedule)
     {
-        if (!schedule.Enabled) return;
+        if (!Schedule.Enabled) return;
 
-        TimeSpan? delay = CalculateDelay(schedule);
+        TimeSpan? delay = CalculateDelay(Schedule);
 
         if (delay is null) return;
 
@@ -43,7 +49,7 @@ public static class SchedulerService
                 try
                 {
                     GTimer.Dispose();
-                    GlobalTimers.Remove(GTimer);
+                    GlobalTimers.Remove(Schedule.ID);
                 }
                 catch { }
                 return;
@@ -62,12 +68,27 @@ public static class SchedulerService
             {
                 schedule.Enabled = false;
                 timer.Dispose();
-                GlobalTimers.Remove(timer);
+                GlobalTimers.Remove(schedule.ID);
             }
 
-        }, (GTimer, server, schedule), delay.Value, Timeout.InfiniteTimeSpan);
+        }, (GTimer, server, Schedule), delay.Value, Timeout.InfiniteTimeSpan);
 
-        GlobalTimers.Add(GTimer);
+        GlobalTimers.Add(Schedule.ID, GTimer);
+    }
+
+    public static void RemoveSchedules(this MCBedrockServer server, IEnumerable<Schedule> schedules)
+    {
+        foreach (var item in schedules)
+            RemoveSchedule(server, item);
+    }
+
+    public static void RemoveSchedule(this MCBedrockServer server, Schedule Schedule)
+    {
+        if (GlobalTimers.TryGetValue(Schedule.ID, out var timer))
+        {
+            timer.Dispose();
+            GlobalTimers.Remove(Schedule.ID);
+        }
     }
 
     private static TimeSpan? CalculateDelay(Schedule schedule)

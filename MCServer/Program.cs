@@ -13,14 +13,15 @@ public class Program
 #if DEBUG
     // public static string ServerPath = Path.GetFullPath(IsWin ? "../Data/Bedrock Server/" : 
     //     "/home/egbert/Documents/Projects/C#/MCServer/Data/Bedrock Server");
-    public static string ServerPath = Path.GetFullPath("./../Data/Bedrock Server/");
+    public static string ServerPath = Path.GetFullPath("./../Data/");
 #else
-    public static string ServerPath = Path.GetFullPath(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MCServer/Bedrock Server/"));
+    public static string ServerPath = Path.GetFullPath(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MCServer/"));
 #endif
 
     public static bool IsWin => OperatingSystem.IsWindows();
 
     public static ISnackbar? Snackbar;
+    public static AppSettings Settings;
 
     public static void NotifyUser(string msg, Severity severity)
     {
@@ -48,8 +49,8 @@ public class Program
             .AddRazorComponents()
             .AddInteractiveServerComponents();
 
-        var gameServer = new MCBedrockServer(ServerPath);
-        builder.Services.AddSingleton(gameServer);
+        var gameServers = new GameServers();
+        builder.Services.AddSingleton(gameServers);
 
         var app = builder.Build();
 
@@ -70,7 +71,7 @@ public class Program
         app.MapRazorComponents<App>()
             .AddInteractiveServerRenderMode();
 
-        app.Lifetime.ApplicationStopping.Register(() => gameServer.Dispose());
+        app.Lifetime.ApplicationStopping.Register(() => gameServers.Dispose());
 
         app.Run();
     }

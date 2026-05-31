@@ -1,6 +1,5 @@
 @page "/settings"
 @using Microsoft.Extensions.Options
-@inject MCBedrockServer Server
 @inject IJSRuntime JS
 @inject IOptions<AppSettings> Config;
 
@@ -13,7 +12,9 @@
     <MudTextField Variant="Variant.Outlined" T="string" Label="Global Backup Path" @bind-Value="Settings.BackupPath"
                   HelperText="The global location for storing world backups. Property helpers:
 {ServerPath} : Path to server files
-{ServerName} : The server name">
+{ServerName} : The server name
+{ServerID} : The server ID
+{WorldName} : The world name.">
     </MudTextField>
 </MudStack>
 

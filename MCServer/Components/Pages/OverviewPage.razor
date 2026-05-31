@@ -1,5 +1,6 @@
-﻿@page "/overview"
-@inject MCBedrockServer Server
+﻿@page "/servers/{serverId}"
+@inject NavigationManager Nav
+@inject GameServers GameServers
 @inject IJSRuntime JS
 
 <PageTitle>MCServer - Overview</PageTitle>
@@ -22,10 +23,20 @@
 </div>
 
 @code {
+    [Parameter] public string serverId { get; set; } = "";
+    public MCBedrockServer Server { get; set; }
+    
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
+            if (GameServers.FindByID(serverId) is not MCBedrockServer server)
+            {
+                Nav.NavigateTo("\not-found");
+                return;
+            }
+
+            Server = server;
             StateHasChanged();
         }
     }

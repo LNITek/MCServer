@@ -1,6 +1,6 @@
-@page "/docs/{type?}/{server?}"
-
-@inject MCBedrockServer Server
+@page "/docs/{serverId?}/{type?}"
+@inject NavigationManager Nav
+@inject GameServers GameServers
 
 <PageTitle>MCServer - Documentation</PageTitle>
 
@@ -22,19 +22,20 @@
     private MarkupString HTMLContent;
 
     [Parameter] public string type { get; set; } = "";
-    [Parameter] public string server { get; set; } = "host";
+    [Parameter] public string serverId { get; set; } = "host";
+    public IGameServer? Server { get; set; }
 
     protected override Task OnAfterRenderAsync(bool firstRender)
     {
-        var GServer = string.IsNullOrWhiteSpace(server) ? null : Server;
+        Server = GameServers.FindByID(serverId);
 
         string html = DocsService.Docs404;
         switch (type)
         {
-            case "notes" when GServer is null: html = DocsService.GetReadMe(); break;
-            case "releases" when GServer is null: html = DocsService.GetReleaseNotes(); break;
-            case "notes": html = GServer.GetReadMe(); break;
-            case "releases": html = GServer.GetReleaseNotes(); break;
+            case "notes" when Server is null: html = DocsService.GetReadMe(); break;
+            case "releases" when Server is null: html = DocsService.GetReleaseNotes(); break;
+            case "notes": html = Server.GetReadMe(); break;
+            case "releases": html = Server.GetReleaseNotes(); break;
         }
 
         HTMLContent = new(html);

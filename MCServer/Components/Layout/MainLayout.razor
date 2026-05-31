@@ -1,9 +1,12 @@
 ﻿@using System.Text.Json
 @using System.Text.Json.Serialization.Metadata
+@using Microsoft.Extensions.Options
 @inherits LayoutComponentBase
 @inject ILocalStorageService Storage;
 @inject ISnackbar Snackbar
+@inject IOptions<AppSettings> Config;
 @inject NavigationManager Nav
+@inject GameServers Servers
 
 <MudThemeProvider @ref="_mudThemeProvider" Theme="Theme.MasterTheme" @bind-IsDarkMode="IsDarkMode" />
 <MudPopoverProvider />
@@ -33,26 +36,32 @@
                     @* <MudButton Variant="Variant.Text" Style="padding: 0px 2px; text-transform:none; justify-content: start; width:100%;" Href="/servers">Servers</MudButton> *@
                 </TitleContent>
                 <ChildContent>
-                    <MudNavGroup Icon="@Icons.Rounded.Monitor" Title="Default">
-                        <TitleContent>
-                            <a href="/overview">Default</a>
-                            @* <MudButton Variant="Variant.Text" Style="padding: 0px 2px; text-transform:none; justify-content: start; width:100%;" Href="/overview">Default</MudButton> *@
-                        </TitleContent>
-                        <ChildContent>
-                            <MudNavLink Icon="@Icons.Rounded.Terminal" Href="/console">Console</MudNavLink>
-                            <MudNavLink Icon="@Icons.Rounded.HomeRepairService" Href="/props">Properties</MudNavLink>
-                            <MudNavLink Icon="@Icons.Rounded.AdminPanelSettings" Href="/player-settings">Player Settings</MudNavLink>
-                            <MudNavLink Icon="@Icons.Rounded.Backpack" Href="/packets">Packet Configs</MudNavLink>
-                            <MudNavLink Icon="@Icons.Rounded.Timer" Href="/schedules">Schedules</MudNavLink>
-                        </ChildContent>
-                    </MudNavGroup>
+                    @foreach (var server in Servers)
+                    {
+                        <MudNavGroup Icon="@Icons.Rounded.Monitor" Title="Default">
+                            <TitleContent>
+                                <MudBadge Origin="Origin.BottomLeft" Color="@(RunningStatus(server))" Overlap>
+                                    <a href="@($"/servers/{server.Settings.ID}")">@server.Settings.Name</a>
+                                </MudBadge>
+                                @* <MudButton Variant="Variant.Text" Style="padding: 0px 2px; text-transform:none; justify-content: start; width:100%;" Href="/overview">Default</MudButton> *@
+                            </TitleContent>
+                            <ChildContent>
+                                <MudNavLink Icon="@Icons.Rounded.Terminal" Href="@($"/servers/{server.Settings.ID}/console")">Console</MudNavLink>
+                                <MudNavLink Icon="@Icons.Rounded.HomeRepairService" Href="@($"/servers/{server.Settings.ID}/props")">Properties</MudNavLink>
+                                <MudNavLink Icon="@Icons.Rounded.AdminPanelSettings" Href="@($"/servers/{server.Settings.ID}/player-settings")">Player Settings</MudNavLink>
+                                <MudNavLink Icon="@Icons.Rounded.Backpack" Href="@($"/servers/{server.Settings.ID}/packets")">Packet Configs</MudNavLink>
+                                <MudNavLink Icon="@Icons.Rounded.Timer" Href="@($"/servers/{server.Settings.ID}/schedules")">Schedules</MudNavLink>
+                            </ChildContent>
+                        </MudNavGroup>
+                    }
                 </ChildContent>
             </MudNavGroup>
 
+            <MudSpacer />
             <MudDivider Class="my-2" />
 
-            <MudNavLink Icon="@Icons.Rounded.StickyNote2" Href="/docs/notes">How To</MudNavLink>
-            <MudNavLink Icon="@Icons.Rounded.EventNote" Href="/docs/releases">Release Notes</MudNavLink>
+            <MudNavLink Icon="@Icons.Rounded.StickyNote2" Href="/docs/host/notes">How To</MudNavLink>
+            <MudNavLink Icon="@Icons.Rounded.EventNote" Href="/docs/host/releases">Release Notes</MudNavLink>
             <MudNavLink Icon="@Icons.Rounded.Settings" Href="/settings">Settings</MudNavLink>
         </MudNavMenu>
     </MudDrawer>
@@ -88,28 +97,41 @@
 
     private string GetToggleTheme() => IsDarkMode ? Icons.Rounded.LightMode : Icons.Rounded.DarkMode;
 
-    private string PageHeader => Nav.Uri[(Nav.Uri.LastIndexOf('/') + 1)..] switch
+    private string PageHeader
     {
-        "" => "Dashboard",
-        "overview" => "Overview",
-        "console" => "Console",
-        "props" => "Properties",
-        "player-settings" => "Player Settings",
-        "packets" => "Packet Rate Limit Config",
-        "schedules" => "Schedule",
-        "notes" => "How To",
-        "releases" => "Release Notes",
-        "settings" => "Settings",
-        _ => "MCServer"
-    };
+        get
+        {
+            var URL = Nav.Uri[(Nav.Uri.LastIndexOf('/') + 1)..];
+            return URL switch
+            {
+                "" => "Dashboard",
+                "overview" => "Overview",
+                "console" => "Console",
+                "props" => "Properties",
+                "player-settings" => "Player Settings",
+                "packets" => "Packet Rate Limit Config",
+                "schedules" => "Schedule",
+                "notes" => "How To",
+                "releases" => "Release Notes",
+                "settings" => "Settings",
+                _ when Nav.Uri.Contains("servers") => Servers.FindByID(URL)?.Settings.Name ?? "MCServer",
+                _ => "MCServer"
+            };
+        }
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         Program.Snackbar = Snackbar;
+        Program.Settings = Config.Value;
+        
         if (firstRender)
         {
             IsDarkMode = (await Storage.GetItemAsync<bool?>(nameof(IsDarkMode))) ?? await _mudThemeProvider.GetSystemDarkModeAsync();
+            Servers.Register(Program.Settings.ServerSettings);
             StateHasChanged();
         }
     }
+
+    private Color RunningStatus(IGameServer server) => server.ServerRunning ? Color.Success : Color.Error;
 }

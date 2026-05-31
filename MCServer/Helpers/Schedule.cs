@@ -34,6 +34,7 @@ public enum ScheduleMode
 
 public partial class Schedule : INotifyPropertyChanged
 {
+    public string ID { get; init; } = Guid.NewGuid().ToString();
     [NotifyChanged]
     string name { get; set; }
     [NotifyChanged]

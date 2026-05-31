@@ -53,8 +53,8 @@ public static class ProcessService
         server.ServerProcess.StartInfo.CreateNoWindow = true;
         server.ServerProcess.StartInfo.ErrorDialog = false;
 
-        server.ServerProcess.OutputDataReceived += WriteOut;
-        server.ServerProcess.ErrorDataReceived += WriteError;
+        server.ServerProcess.OutputDataReceived += server.WriteProcessOut;
+        server.ServerProcess.ErrorDataReceived += server.WriteProcessError;
         server.ServerProcess.Start();
         server.SetAsChildProcess();
         server.ServerProcess.BeginOutputReadLine();
@@ -62,61 +62,18 @@ public static class ProcessService
         server.ServerProcess.WaitForExit();
         server.CommandRunning = true;
         server.ServerProcess.CancelOutputRead();
-        server.ServerProcess.OutputDataReceived -= WriteOut;
-        server.ServerProcess.ErrorDataReceived -= WriteError;
+        server.ServerProcess.OutputDataReceived -= server.WriteProcessOut;
+        server.ServerProcess.ErrorDataReceived -= server.WriteProcessError;
         server.ServerProcess.Close();
-        if (server.OutputList.Any(x => x.Line.Contains("Exiting program") && x.Type == Color.Error /*x.Contains("ERROR")*/))
-        {
-            /*var Dump = new StreamWriter(Path.Combine(server.ServerPath, "LOGS", $"ERROR {DateTime.Now:yyyy-MM-dd HH-mm-ss}.txt"));
-            server.OutputList.ForEach((x) => Dump.WriteLine(x));
-            Dump.Close();*/
-            //OtherController.ThrowLog("BC-S01 | Server Terminated. Internal ERROR");
-            server.WriteDisplayLine("Server Stopped With Error.", Color.Error);
-        }
-        else
-            server.WriteDisplayLine("Server Stopped.", Color.Info);
-
+        
+        server.WriteProcessExit(server.ServerProcess, new());
+        
         server.ServerRunning = false;
         server.CommandRunning = false;
         //server.OutputList.Clear();
-
-        void WriteError(object sender, DataReceivedEventArgs e)
-        {
-            var Out = e.Data ?? "{NULL}";
-            server.WriteDisplayLine(Out, Color.Error, true);
-        }
-        void WriteOut(object sender, DataReceivedEventArgs e)
-        {
-            var Out = e.Data ?? "{NULL}";
-
-            if (Out.EndsWith("Server started."))
-            {
-                server.WriteLine("say §eWelcome To MCServer!");
-                server.CommandRunning = false;
-            }
-
-            if (Out.Contains("Player connected", StringComparison.OrdinalIgnoreCase))
-            {
-                var props = Out.Split([',', ':']);
-                var name = props[1];
-                var xuid = props[3];
-
-                if (server.BanList.FirstOrDefault(x => x.Name == name || x.Xuid == xuid) is Player player)
-                    server.WriteLine($"kick {player.DisplayName} You are currently ban from this server until {player.BanTime?.ToString() ?? "Indefentitly"} for: {player.BanResion}");
-            }
-
-            if (Out.Contains("INFO"))
-                server.WriteDisplayLine(Out, Color.Info, false);
-            else if (Out.Contains("WARN"))
-                server.WriteDisplayLine(Out, Color.Warning, false);
-            else if (Out.Contains("ERROR"))
-                server.WriteDisplayLine(Out, Color.Error, false);
-
-            else server.WriteDisplayLine(Out, Color.Info);
-        };
     }
 
-    public static void RestartServer(this MCBedrockServer server)
+    public static void RestartServer(this MCBedrockServer server, TimeSpan Delay)
     {
         if (!server.ServerRunning)
         {
@@ -124,15 +81,15 @@ public static class ProcessService
             return;
         }
 
-        CreateThread(async () => await RestartTask(server));
+        CreateThread(async () => await RestartTask(server,Delay));
     }
 
-    internal static async Task RestartTask(MCBedrockServer server)
+    internal static async Task RestartTask(MCBedrockServer server, TimeSpan Delay)
     {
         server.CommandRunning = true;
         server.CommandQue.WaitOne();
 
-        var res = await Stop(server, "Restarting Server!", new(0, 0, 10));
+        var res = await Stop(server, "Restarting Server!", Delay);
         if (res) StartServer(server);
 
         server.CommandQue.Release();

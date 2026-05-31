@@ -30,7 +30,8 @@ namespace MCServer.Helpers
         public string BanResion { get; set; } = string.Empty;
         public DateTime? LastLogin { get; set; } = null;
         public TimeSpan TotalPlayTime { get; set; } = TimeSpan.Zero;
-        
+
+        public bool IsOnline { get; set; } = false;
         public bool IsVerified => !string.IsNullOrWhiteSpace(xuid);
         public Color PlayerLimitColour
         {

@@ -18,31 +18,14 @@ public static class PropertiesService
         if (!File.Exists(server.ServerPath + "/server.properties"))
             Program.NotifyUser("Server Properties: could not find server properties file!", MudBlazor.Severity.Error);
         else using (var Reader = new StreamReader(server.ServerPath + "/server.properties"))
-            while (!Reader.EndOfStream)
-            {
-                var Line = Reader.ReadLine();
-                while (string.IsNullOrWhiteSpace(Line))
-                    Line = Reader.ReadLine();
-                var Prop = Line.Split('=');
-                var Com = new List<string>();
-                var Mode = PropertyEditMode.None;
-                Line = Reader.ReadLine();
-                while (!string.IsNullOrWhiteSpace(Line) && Line.StartsWith('#'))
-                {
-                    if (!(Line.StartsWith("#$") && Enum.TryParse<PropertyEditMode>(Line.Remove(0, 2).Trim(), out Mode)))
-                        Com.Add(Line);
-                    
-                    Line = Reader.ReadLine();
-                }
-                Properties.Add(new Property(Prop[0].Trim(), Prop[1].Trim(), Com) { Order = I++, Mode = Mode });
-            }
+            Properties = ReadProperties(Reader);
 
         return Properties;
     }
 
     public static void SetProperties(this MCBedrockServer server, IEnumerable<Property> Properties)
     {
-        if (!File.Exists(server.ServerPath + "/server.properties"))
+        if (!File.Exists(server?.ServerPath + "/server.properties"))
             Program.NotifyUser("Server Properties: Could not find server properties file!", MudBlazor.Severity.Error);
         else using (var Writer = File.CreateText(server.ServerPath + "/server.properties"))
             foreach (var prop in Properties.OrderBy(x => x.Order))
@@ -58,11 +41,38 @@ public static class PropertiesService
                 });
             }
     }
+    
+    public static List<Property> ReadProperties(StreamReader Reader)
+    {
+        List<Property> Properties = [];
+        double I = 0;
+
+        while (!Reader.EndOfStream)
+        {
+            var Line = Reader.ReadLine();
+            while (string.IsNullOrWhiteSpace(Line))
+                Line = Reader.ReadLine();
+            var Prop = Line.Split('=');
+            var Com = new List<string>();
+            var Mode = PropertyEditMode.None;
+            Line = Reader.ReadLine();
+            while (!string.IsNullOrWhiteSpace(Line) && Line.StartsWith('#'))
+            {
+                if (!(Line.StartsWith("#$") && Enum.TryParse<PropertyEditMode>(Line.Remove(0, 2).Trim(), out Mode)))
+                    Com.Add(Line);
+                
+                Line = Reader.ReadLine();
+            }
+            Properties.Add(new Property(Prop[0].Trim(), Prop[1].Trim(), Com) { Order = I++, Mode = Mode });
+        }
+
+        return Properties;
+    }
     #endregion
 
     #region Player Props
 
-    public static List<Player> GetBanList(this MCBedrockServer server, List<Player> BanList)
+    /*public static List<Player> GetBanList(this MCBedrockServer server, List<Player> BanList)
     {
         foreach (var item in GetConfigs(server).Where(x => x.Ban))
         {
@@ -89,7 +99,7 @@ public static class PropertiesService
         }
 
         return BanList;
-    }
+    }*/
     
     public static List<Player> GetPlayers(this MCBedrockServer server)
     {
@@ -134,7 +144,7 @@ public static class PropertiesService
         }
         foreach (var item in GetPermissions(server))
         {
-            var permission = Enum.Parse<PlayerPermission>(item.permission);
+            var permission = Enum.Parse<PlayerPermission>(item.permission, true);
             var player = Players.Find(x => x.Xuid == item.xuid);
             if (player is null)
             {
@@ -153,7 +163,7 @@ public static class PropertiesService
     {
         var json = JsonSerializer.Serialize(Players.Select(x => x.AsConfig()));
         File.WriteAllText(server.ServerPath + "/player.json",json);
-        json = JsonSerializer.Serialize(Players.Select(x => x.AsAllowList()));
+        json = JsonSerializer.Serialize(Players.Where(x => x.WhiteList).Select(x => x.AsAllowList()));
         File.WriteAllText(server.ServerPath + "/allowlist.json",json);
         json = JsonSerializer.Serialize(Players.Select(x => x.AsPermission()));
         File.WriteAllText(server.ServerPath + "/permissions.json",json);
@@ -163,7 +173,7 @@ public static class PropertiesService
     {
         if (!File.Exists(server.ServerPath + "/players.json"))
         {
-            Program.NotifyUser("Player Properties: Could not find player config file!", MudBlazor.Severity.Error);
+            //Program.NotifyUser("Player Properties: Could not find player config file!", MudBlazor.Severity.Error);
             return [];
         }
         var permissions = JsonSerializer.Deserialize<Player.Config[]>
@@ -176,7 +186,7 @@ public static class PropertiesService
     {
         if (!File.Exists(server.ServerPath + "/allowlist.json"))
         {
-            Program.NotifyUser("Player Properties: Could not find player allow list file!", MudBlazor.Severity.Error);
+            //Program.NotifyUser("Player Properties: Could not find player allow list file!", MudBlazor.Severity.Error);
             return [];
         }
 
@@ -190,7 +200,7 @@ public static class PropertiesService
     {
         if (!File.Exists(server.ServerPath + "/permissions.json"))
         {
-            Program.NotifyUser("Player Properties: Could not find player permissions file!", MudBlazor.Severity.Error);
+            //Program.NotifyUser("Player Properties: Could not find player permissions file!", MudBlazor.Severity.Error);
             return [];
         }
         var permissions = JsonSerializer.Deserialize<Player.Permission[]>
@@ -213,5 +223,13 @@ public static class PropertiesService
         return JsonSerializer.Deserialize<PacketConfig>
             (File.Open(server.ServerPath + "/packetlimitconfig.json", FileMode.Open, FileAccess.Read, FileShare.ReadWrite)) ?? new();
     }
+    
+    public static void SetPacketConfig(this MCBedrockServer server, PacketConfig config)
+    {
+        if(server is null) return;
+        var json = JsonSerializer.Serialize(config);
+        File.WriteAllText(server.ServerPath + "/packetlimitconfig.json",json);
+    }
+
     #endregion
 }

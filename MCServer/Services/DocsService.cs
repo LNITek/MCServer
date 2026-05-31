@@ -36,9 +36,9 @@ public static class DocsService
         return GetHTML(Path.Combine(Program.AssetsPath, "README.md"));
     }
     
-    public static string GetReadMe(this MCBedrockServer server)
+    public static string GetReadMe(this IGameServer server)
     {
-        return GetHTML(Path.Combine(server.ServerPath, "bedrock_server_how_to.html"));
+        return GetHTML(Path.Combine(server.Settings.FullPath, "bedrock_server_how_to.html"));
     }
     
     public static string GetReleaseNotes()
@@ -46,8 +46,8 @@ public static class DocsService
         return GetHTML(Path.Combine(Program.AssetsPath, "ChangeLog.md"));
     }
     
-    public static string GetReleaseNotes(this MCBedrockServer server)
+    public static string GetReleaseNotes(this IGameServer server)
     {
-        return GetHTML(Path.Combine(server.ServerPath, "release-notes.txt"));
+        return GetHTML(Path.Combine(server.Settings.FullPath, "release-notes.txt"));
     }
 }

@@ -1,5 +1,7 @@
-﻿@page "/packets"
-@inject MCBedrockServer Server
+﻿@page "/servers/{serverId}/packets"
+@implements IDisposable
+@inject NavigationManager Nav
+@inject GameServers GameServers
 
 <PageTitle>MCServer - Packet Rate Limits</PageTitle>
 
@@ -55,7 +57,17 @@
 
         @if (SelectedLimit is not null)
         {
-            @if (SelectedLimit.minecraftPacketIds is not null)
+            <MudStack Spacing="1" Row>
+                 <MudSpacer/>
+            <MudIconButton Variant="Variant.Text" Color="Color.Info" Icon="@Icons.Rounded.Save" OnClick="Save"/>
+
+            @if (SelectedLimit.minecraftPacketIds != null)
+            {
+                <MudIconButton Variant="Variant.Text" Color="Color.Error" Icon="@Icons.Rounded.Delete" OnClick="DeleteLimit_Click"/>
+            }
+        </MudStack>
+
+        @if (SelectedLimit.minecraftPacketIds is not null)
             {
                 <MudTextField Variant="Variant.Outlined" T="string" Label="Packet IDs" @bind-Value="SelectedLimit.PacketIds" HelperText="List of packet to limit by there IDs. Ex: 193;4"></MudTextField>
             }
@@ -79,34 +91,46 @@
 
 @code {
     public PacketConfig Config;
-    public ExList<PacketConfig.Limit> Limits;
+    public ExList<PacketConfig.Limit> Limits = new([]);
     public string SearchText { get; set; } = string.Empty;
     public PacketConfig.Limit? SelectedLimit = default;
 
-    public PacketPage()
-    {
-    }
-
-    protected override void OnInitialized()
-    {
-        base.OnInitialized();
-        Config = Server.GetPacketConfig();
-        Limits = new(Config.limitGroups);
-        SelectedLimit = Config.DefaultLimit;
-
-        Limits.SetFilter(filter =>
-        {
-            if (string.IsNullOrWhiteSpace(SearchText) || !uint.TryParse(SearchText, out var SearchID)) return true;
-            return filter.minecraftPacketIds.Contains(SearchID);
-        });
-    }
-
+    [Parameter] public string serverId { get; set; } = "";
+    public MCBedrockServer Server { get; set; }
+    
     protected override void OnAfterRender(bool firstRender)
     {
         if (firstRender)
         {
+            if (GameServers.FindByID(serverId) is not MCBedrockServer server)
+            {
+                Nav.NavigateTo("\not-found");
+                return;
+            }
+
+            Server = server;
+            Config = Server.GetPacketConfig();
+            Limits = new(Config.limitGroups);
+            SelectedLimit = Config.DefaultLimit;
+            
+            Limits.SetFilter(filter =>
+            {
+                if (string.IsNullOrWhiteSpace(SearchText) || !uint.TryParse(SearchText, out var SearchID)) return true;
+                return filter.minecraftPacketIds.Contains(SearchID);
+            });
+            
             StateHasChanged();
         }
+    }
+
+    public void Dispose()
+    {
+        Save();
+    }
+    
+    private void Save()
+    {
+        Server.SetPacketConfig(Config);
     }
 
     private void SelectDefault_Click()
@@ -118,6 +142,15 @@
     {
         Config.limitGroups.Add(new());
         SelectedLimit = Config.limitGroups.LastOrDefault();
+        StateHasChanged();
+    }
+
+    private void DeleteLimit_Click()
+    {
+        if(SelectedLimit?.minecraftPacketIds == null) return;
+        Config.limitGroups.Remove(SelectedLimit);
+        SelectedLimit = Config.DefaultLimit;
+        Save();
         StateHasChanged();
     }
 

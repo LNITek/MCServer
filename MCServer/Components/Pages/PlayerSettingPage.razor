@@ -1,7 +1,7 @@
-﻿@page "/player-settings"
+﻿@page "/servers/{serverId}/player-settings"
 @implements IDisposable
-@inject MCBedrockServer Server
-@using System.Collections.ObjectModel
+@inject NavigationManager Nav
+@inject GameServers GameServers
 
 <PageTitle>MCServer - Player Settings</PageTitle>
 
@@ -54,15 +54,27 @@
 
     <MudDivider Vertical Class="mx-4" />
 
-    <MudStack Style="flex-grow:1; overflow:auto;">
-        <MudAlert Variant="Variant.Text" Severity="Severity.Warning">These changes is only in an effect after a restart!</MudAlert>
+    <MudStack Spacing="3" Style="flex-grow:1; overflow:auto;">
+        @* <MudAlert Variant="Variant.Text" Severity="Severity.Warning">These changes is only in an effect after a restart!</MudAlert> *@
 
         @if (SelectedPlayer is not null)
         {
+            <MudStack Spacing="1" Row>
+                <MudSpacer/>
+                <MudIconButton Variant="Variant.Text" Color="Color.Info" Icon="@Icons.Rounded.Save" OnClick="Save"/>
+                <MudIconButton Variant="Variant.Text" Color="Color.Error" Icon="@Icons.Rounded.Delete" OnClick="DeletePlayer_Click"/>
+            </MudStack>
+            
             <MudTextField Variant="Variant.Outlined" T="string" Label="Name" @bind-Value="SelectedPlayer.Name"></MudTextField>
             <MudTextField Variant="Variant.Outlined" T="string" Label="XUID" @bind-Value="SelectedPlayer.Xuid"></MudTextField>
 
+            <MudText>
+                <MudText><b>Last time connected:</b> @SelectedPlayer.LastLogin</MudText>
+                <MudText><b>Total time played:</b> @SelectedPlayer.TotalPlayTime</MudText>
+            </MudText>  
+        
             <MudText Typo="Typo.h6">Properties</MudText>
+
             <MudSelect Variant="Variant.Outlined" T="PlayerPermission" Label="Permission" @bind-Value="SelectedPlayer.Permissions" FullWidth>
                 @foreach (var permission in Enum.GetValues<PlayerPermission>())
                 {
@@ -70,10 +82,26 @@
                 }
             </MudSelect>
 
+            
             <MudStack Spacing="1" Row AlignItems="AlignItems.Center">
                 <MudCheckBox T="bool" @bind-Value="SelectedPlayer.WhiteList" Label="Add to allow list" />
                 <MudSwitch T="bool" @bind-Value="SelectedPlayer.IgnoresPlayerLimit" Label="Ignores Player Limit" Disabled="@(!SelectedPlayer.WhiteList)" />
+                
+                <MudDivider Vertical/>
+                
+                <MudCheckBox T="bool" @bind-Value="SelectedPlayer.Ban" Label="Is Player Banned" />
+                <MudSwitch T="bool" ValueChanged="(v) => { SelectedPlayer.BanTime = v ? null : DateTime.Today.AddDays(1);}" 
+                           Value="@(SelectedPlayer.BanTime == null)" Label="Permanently" Disabled="@(!SelectedPlayer.Ban)"/>
             </MudStack>
+            
+            @if (SelectedPlayer.Ban)
+            {
+                <MudStack Spacing="1" Row AlignItems="AlignItems.Center">
+                    <MudDatePicker Date="@SelectedPlayer.BanTime" Disabled="@(SelectedPlayer.BanTime == null)" Label="Banned until"></MudDatePicker>
+                    <MudTextField Variant="Variant.Outlined" T="string" Label="Ban reasion" @bind-Value="SelectedPlayer.BanResion" FullWidth></MudTextField>
+                </MudStack>
+            }
+            
         } else
         {
             <MudAlert Variant="Variant.Text" Severity="Severity.Info">Select a player or create a new one.</MudAlert>
@@ -82,34 +110,35 @@
 </div>
 
 @code {
-    public ObservableCollection<Player> PlayersList = [];
-    public ExList<Player> Players;
+    public ExList<Player> Players = new([]);
     public string SearchText { get; set; } = string.Empty;
     public Player? SelectedPlayer = default;
-
-    public PlayerSettingPage()
-    {
-        Players = new(PlayersList);
-        Players.SetSort((a, b) => a.Xuid.CompareTo(b.Xuid));
-    }
-
-    protected override void OnInitialized()
-    {
-        base.OnInitialized();
-        PlayersList.AddRange(Server.GetPlayers());
-        SelectedPlayer = PlayersList.FirstOrDefault();
-        Players.SetFilter(filter =>
-        {
-            if (string.IsNullOrWhiteSpace(SearchText)) return true;
-            return filter.Name.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
-                filter.Xuid.Contains(SearchText, StringComparison.OrdinalIgnoreCase);
-        });
-    }
+    
+    [Parameter] public string serverId { get; set; } = "";
+    public MCBedrockServer Server { get; set; }
 
     protected override void OnAfterRender(bool firstRender)
     {
         if (firstRender)
         {
+            if (GameServers.FindByID(serverId) is not MCBedrockServer server)
+            {
+                Nav.NavigateTo("\not-found");
+                return;
+            }
+
+            Server = server;
+            Players = new(Server.PlayerList);
+            Players.SetSort((a, b) => a.Xuid.CompareTo(b.Xuid));
+            SelectedPlayer = Server.PlayerList.FirstOrDefault();
+            
+            Players.SetFilter(filter =>
+                {
+                    if (string.IsNullOrWhiteSpace(SearchText)) return true;
+                    return filter.Name.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
+                        filter.Xuid.Contains(SearchText, StringComparison.OrdinalIgnoreCase);
+                });
+        
             StateHasChanged();
         }
     }
@@ -121,24 +150,25 @@
     
     private void Save()
     {
-        Server.SetPlayers(PlayersList);
-        Server.RefreshPlayerProperties();
+        Server?.SetPlayers(Server.PlayerList);
+        Server?.RefreshPlayerProperties();
     }
 
     private void AddPlayer_Click()
     {
-        PlayersList.Add(new());
-        SelectedPlayer = PlayersList.LastOrDefault();
+        Server.PlayerList.Add(new());
+        SelectedPlayer = Server.PlayerList.LastOrDefault();
         StateHasChanged();
     }
 
-    private void DeleteProperty_Click()
+    private void DeletePlayer_Click()
     {
-        PlayersList.Remove(SelectedPlayer);
+        Server.PlayerList.Remove(SelectedPlayer);
         SelectedPlayer = null;
         Save();
         StateHasChanged();
     }
+    
     private void Search(string value)
     {
         SearchText = value;

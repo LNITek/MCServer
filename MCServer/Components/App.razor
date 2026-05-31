@@ -24,10 +24,10 @@
     <script src="@Assets["_framework/blazor.web.js"]"></script>
     <script src="@Assets["_content/MudBlazor/MudBlazor.min.js"]"></script>
     <script>
-        window.scrollToBottom = (element) => {
+        window.scrollToBottom = (element,threshold) => {
             if (!element) return;
-            var threshold = 100;
-            if (element.scrollHeight - element.scrollTop - element.clientHeight < threshold) {
+            if (!threshold) threshold = 0;
+            if (element.scrollHeight - element.scrollTop - element.clientHeight < threshold || threshold === 0) {
                 element.scrollTop = element.scrollHeight;
             }
         };
