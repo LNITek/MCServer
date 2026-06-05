@@ -31,7 +31,7 @@ public partial class MCBedrockServer : INotifyPropertyChanged, IDisposable, IGam
     private IntPtr _jobHandle = IntPtr.Zero;
 
     [NotifyChanged]
-    double? progress { get; set; } = 50;
+    double? progress { get; set; } = null;
 
     public ObservableCollection<Schedule> ServerSchedules { get; } = [];
     public ObservableCollection<Player> PlayerList { get; set; } = [];

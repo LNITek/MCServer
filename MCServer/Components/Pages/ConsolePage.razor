@@ -7,21 +7,10 @@
 
 <PageTitle>MCServer - Console</PageTitle>
 
-<style>
-    .mud-overlay.mud-overlay-absolute {
-        position: absolute;
-        align-self: start;
-        top: 0px;
-        z-index: 9999;
-        width: 50%;
-        justify-self: center;
-    }
-</style>
-
 @if (Server is not null)
 {
-    <MudOverlay Visible="@(Server.Progress != null)" Absolute="true">
-        <div class="d-flex flex-column align-center justify-start" style="height:100%; padding-top:16px">
+    <MudOverlay Visible="@(Server.Progress != null)">
+        <div class="d-flex flex-column align-center justify-start" style="height:100%;">
             <MudPaper Class="pa-4">
                 <MudText Align="Align.Center" Class="mb-2">Processing... @(Server.Progress ?? 0)%</MudText>
                 <MudProgressLinear Value="@(Server.Progress ?? 0)" Max="100" Min="0" Color="Color.Primary" Style="width:300px"/>
