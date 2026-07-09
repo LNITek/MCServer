@@ -162,7 +162,7 @@ public static class PropertiesService
     public static void SetPlayers(this MCBedrockServer server, IEnumerable<Player> Players)
     {
         var json = JsonSerializer.Serialize(Players.Select(x => x.AsConfig()));
-        File.WriteAllText(server.ServerPath + "/player.json",json);
+        File.WriteAllText(server.ServerPath + "/players.json",json);
         json = JsonSerializer.Serialize(Players.Where(x => x.WhiteList).Select(x => x.AsAllowList()));
         File.WriteAllText(server.ServerPath + "/allowlist.json",json);
         json = JsonSerializer.Serialize(Players.Select(x => x.AsPermission()));
@@ -171,13 +171,13 @@ public static class PropertiesService
     
     internal static List<Player.Config> GetConfigs(MCBedrockServer server)
     {
-        if (!File.Exists(server.ServerPath + "/players.json"))
+        if (!File.Exists(server.ServerPath + "players.json"))
         {
             //Program.NotifyUser("Player Properties: Could not find player config file!", MudBlazor.Severity.Error);
             return [];
         }
         var permissions = JsonSerializer.Deserialize<Player.Config[]>
-            (File.Open(server.ServerPath + "/player.json", FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
+            (File.Open(server.ServerPath + "/players.json", FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
 
         return [.. permissions?.OfType<Player.Config>() ?? []];
     }

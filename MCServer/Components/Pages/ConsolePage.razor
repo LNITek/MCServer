@@ -48,7 +48,7 @@
 
     <MudStack Spacing="3" Row="true" AlignItems="AlignItems.Center">
         <MudText>MCServer &gt;</MudText>
-        <MudTextField T="string" Variant="Variant.Text" Clearable Immediate @bind-Value="ConsoleCommand" OnKeyDown="@((s) => RunCommand(ConsoleCommand))"
+        <MudTextField T="string" Variant="Variant.Text" Clearable Immediate Value="@ConsoleCommand" OnKeyDown="@((s) => RunCommand(ConsoleCommand))"
                       Adornment="Adornment.End" AdornmentIcon="@Icons.Rounded.ArrowBack" OnAdornmentClick="@(() => RunCommand(ConsoleCommand))"
                       Disabled="@Server.CommandRunning"/>
     </MudStack>
@@ -66,7 +66,7 @@
         {
             if (GameServers.FindByID(serverId) is not MCBedrockServer server)
             {
-                Nav.NavigateTo("\not-found");
+                Nav.NavigateTo("\\not-found");
                 return;
             }
 

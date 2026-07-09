@@ -14,6 +14,12 @@
 <MudDialogProvider />
 <MudSnackbarProvider />
 
+<style>
+    .mud-badge.mud-badge-bottom.right {
+        inset: auto;
+    }
+</style>
+
 <MudLayout>
     <MudAppBar Elevation="1">
         <MudIconButton Icon="@Icons.Rounded.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer"/>
@@ -34,7 +40,6 @@
             <MudNavGroup Icon="@Icons.Rounded.Dns">
                 <TitleContent>
                     <a href="/servers">Servers</a>
-                    @* <MudButton Variant="Variant.Text" Style="padding: 0px 2px; text-transform:none; justify-content: start; width:100%;" Href="/servers">Servers</MudButton> *@
                 </TitleContent>
                 <ChildContent>
                     @foreach (var server in Servers)
@@ -42,13 +47,15 @@
                         // Icon="@Icons.Filled._1K" Title="Default"
                         <MudNavGroup >
                             <TitleContent>
-                                <a class="mud-nav-link mud-ripple" href="@($"/servers/{server.Settings.ID}")" rel TableIndex=0 aria-current="page">
-                                    <MudBadge Origin="Origin.BottomLeft" Color="@(RunningStatus(server))" Overlap>
-                                        <MudIcon Icon="@Icons.Rounded.Monitor"/>
+                                <MudStack Row Spacing="0" Style="margin-left: -12px; height:24.5px">
+                                    <MudBadge Origin="Origin.BottomRight" Color="@server.RunningStatus" Dot>
+                                        <MudIcon Icon="@Icons.Rounded.Monitor"
+                                                 Class="mud-icon-root mud-icon-default mud-icon-size-medium mud-nav-link-icon mud-nav-link-icon-default material-icons-round" />
                                     </MudBadge>
-                                    <div class="mud-nav-link-text">@server.Settings.Name</div>
-                                </a>
-                                @* <MudButton Variant="Variant.Text" Style="padding: 0px 2px; text-transform:none; justify-content: start; width:100%;" Href="/overview">Default</MudButton> *@
+                                    <div class="mud-nav-link-text">
+                                        <a href="@($"/servers/{server.Settings.ID}")">@server.Settings.Name</a>
+                                    </div>
+                                </MudStack>
                             </TitleContent>
                             <ChildContent>
                                 <MudNavLink Icon="@Icons.Rounded.Terminal" Href="@($"/servers/{server.Settings.ID}/console")">Console</MudNavLink>
@@ -137,6 +144,4 @@
             StateHasChanged();
         }
     }
-
-    private Color RunningStatus(IGameServer server) => server.ServerRunning ? Color.Success : Color.Error;
 }

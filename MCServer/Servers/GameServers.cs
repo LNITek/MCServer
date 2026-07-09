@@ -1,4 +1,5 @@
 using MCServer.Helpers;
+using MudBlazor;
 
 namespace MCServer.Server;
 
@@ -45,8 +46,9 @@ public interface IGameServer
     ServerSettings Settings { get; }
     bool ServerRunning { get; set; }
     bool CommandRunning { get; set; }
-    public bool ServerRunningStatus  { get; }
-    public bool ServerExitedStatus  { get; }
+    bool ServerRunningStatus  { get; }
+    bool ServerExitedStatus  { get; }
+    Color RunningStatus { get; }
     StackList OutputList { get; set; }
     
     void Dispose();

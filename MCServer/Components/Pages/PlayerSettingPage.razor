@@ -98,7 +98,7 @@
             {
                 <MudStack Spacing="1" Row AlignItems="AlignItems.Center">
                     <MudDatePicker Date="@SelectedPlayer.BanTime" Disabled="@(SelectedPlayer.BanTime == null)" Label="Banned until"></MudDatePicker>
-                    <MudTextField Variant="Variant.Outlined" T="string" Label="Ban reasion" @bind-Value="SelectedPlayer.BanResion" FullWidth></MudTextField>
+                    <MudTextField Variant="Variant.Outlined" T="string" Label="Ban reason" @bind-Value="SelectedPlayer.BanResion" FullWidth></MudTextField>
                 </MudStack>
             }
             
@@ -123,7 +123,7 @@
         {
             if (GameServers.FindByID(serverId) is not MCBedrockServer server)
             {
-                Nav.NavigateTo("\not-found");
+                Nav.NavigateTo("\\not-found");
                 return;
             }
 

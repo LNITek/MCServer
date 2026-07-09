@@ -17,12 +17,13 @@ public partial class MCBedrockServer : INotifyPropertyChanged, IDisposable, IGam
     public ServerSettings Settings { get; }
     public string ServerPath => Settings.FullPath;
     public DateTime StartupDate { get; set; }
-    [NotifyChanged([nameof(ServerRunningStatus), nameof(ServerExitedStatus)])]
+    [NotifyChanged([nameof(ServerRunningStatus), nameof(ServerExitedStatus), nameof(RunningStatus)])]
     bool serverRunning = false;
     [NotifyChanged([nameof(ServerRunningStatus), nameof(ServerExitedStatus)])]
     bool commandRunning = false;
     public bool ServerRunningStatus => CommandRunning || ServerRunning;
     public bool ServerExitedStatus => CommandRunning || !ServerRunning;
+    public Color RunningStatus => ServerRunning ? Color.Success : Color.Error;
 
     public StackList OutputList { get; set; } = new(100);
     public Process ServerProcess = new();
@@ -214,16 +215,19 @@ public partial class MCBedrockServer : INotifyPropertyChanged, IDisposable, IGam
             CommandRunning = false;
         }
 
-        if (Out.Contains("Player connected", StringComparison.OrdinalIgnoreCase))
+        if (Out.Contains("Player Spawned", StringComparison.OrdinalIgnoreCase))
         {
-            var props = Out[Out.IndexOf(']')..].Split([',', ':']);
-            var name = props[1];
-            var xuid = props[3];
+            var props = Out[Out.IndexOf(']')..].Split([',', ':',' ']).Where(x => !string.IsNullOrWhiteSpace(x));
+            var name = props.ElementAt(3).Trim([' ', '"']);
+            var xuid = props.ElementAt(5).Trim([' ', '"']);
 
-            if(PlayerList.FirstOrDefault(x => x.Xuid == xuid || x.Name == name) is Player player)
+            if (PlayerList.FirstOrDefault(x => x.Xuid == xuid || x.Name == name) is Player player)
             {
                 if (player.Ban)
-                    WriteLine($"kick \"{player.DisplayName}\" You are currently ban from this server until {player.BanTime?.ToString() ?? "Indefentitly"} for: {player.BanResion}");
+                    Task.Delay(500).ContinueWith(t =>
+                    {
+                        WriteLine($"kick \"{player.DisplayName}\" You are currently ban from this server until {player.BanTime?.ToString() ?? "Indefinitely"} for: {player.BanResion}");
+                    });
 
                 player.LastLogin = DateTime.Now;
                 player.IsOnline = true;
@@ -235,6 +239,7 @@ public partial class MCBedrockServer : INotifyPropertyChanged, IDisposable, IGam
                 this.SetPlayers(PlayerList);
             }
         }
+
         if (Out.Contains("Player disconnected", StringComparison.OrdinalIgnoreCase))
         {
             var props = Out[Out.IndexOf(']')..].Split([',', ':']);
