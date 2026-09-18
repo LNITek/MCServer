@@ -37,15 +37,14 @@
         <MudNavMenu>
             <MudNavLink Href="/" Icon="@Icons.Rounded.Dashboard">Dashboard</MudNavLink>
 
-            <MudNavGroup Icon="@Icons.Rounded.Dns">
-                <TitleContent>
-                    <a href="/servers">Servers</a>
-                </TitleContent>
-                <ChildContent>
+            <TextDivider Text="Servers" />
+            
+            @* <MudNavGroup Icon="@Icons.Rounded.Dns" Title="Servers"> *@
+            @*     <ChildContent> *@
                     @foreach (var server in Servers)
-                    {
+                    {//Href="/servers"
                         // Icon="@Icons.Filled._1K" Title="Default"
-                        <MudNavGroup >
+                        <MudNavGroup>
                             <TitleContent>
                                 <MudStack Row Spacing="0" Style="margin-left: -12px; height:24.5px">
                                     <MudBadge Origin="Origin.BottomRight" Color="@server.RunningStatus" Dot>
@@ -66,10 +65,11 @@
                             </ChildContent>
                         </MudNavGroup>
                     }
-                </ChildContent>
-            </MudNavGroup>
+            @*     </ChildContent> *@
+            @* </MudNavGroup> *@
 
             <MudSpacer />
+            
             <MudDivider Class="my-2" />
 
             <MudNavLink Icon="@Icons.Rounded.StickyNote2" Href="/docs/host/notes">How To</MudNavLink>

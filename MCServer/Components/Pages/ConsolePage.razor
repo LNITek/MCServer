@@ -39,7 +39,7 @@
         <MudStack Spacing="2">
             @foreach (var item in Server.OutputList.GetSnapshot())
             {
-                <MudText Color="@item.Type">
+                <MudText Color="@item.Colour">
                     @(item.ToString())
                 </MudText>
             }

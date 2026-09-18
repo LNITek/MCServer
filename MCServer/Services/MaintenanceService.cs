@@ -164,7 +164,7 @@ public static class MaintenanceService
     #region Update Server
     public static void UpdateServer(this MCBedrockServer server)
     {
-            ProcessService.CreateThread(async () => await UpdateTask(server));
+        ProcessService.CreateThread(async () => await UpdateTask(server));
     }
     
     internal static async Task UpdateTask(MCBedrockServer server)
@@ -189,25 +189,25 @@ public static class MaintenanceService
         var URL = links.GetValueOrDefault(type);
         if (string.IsNullOrWhiteSpace(URL))
         {
-            server.WriteDisplayLine("Update Error (URL): " + URL, Color.Error);
+            server.WriteDisplayLine("Update Error (URL): " + URL, ConsoleLineType.Error);
             End();
             return;
         }
 
         var FileName = URL.Split("bedrock-server-").LastOrDefault()?.Replace(".zip", "") ?? "0.0.0.0";
-        server.WriteDisplayLine($"Update versions: New {FileName} | Old {server.Settings.Version}", Color.Info);
+        server.WriteDisplayLine($"Update versions: New {FileName} | Old {server.Settings.Version}");
         if (Version.TryParse(FileName, out Version NewMK) && Version.TryParse(server.Settings.Version, out Version ExistingMK))
         {
             if (NewMK <= ExistingMK)
             {
-                server.WriteDisplayLine($"Update current version is newer", Color.Warning);
+                server.WriteDisplayLine($"Update current version is newer", ConsoleLineType.Warning);
                 End();
                 return;
             }
         }
         else
         {
-            server.WriteDisplayLine($"Update invalid version", Color.Error);
+            server.WriteDisplayLine($"Update invalid version", ConsoleLineType.Error);
             End();
             return;
         }

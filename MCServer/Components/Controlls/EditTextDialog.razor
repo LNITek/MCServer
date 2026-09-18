@@ -1,0 +1,46 @@
+<MudDialog>
+    <DialogContent>
+        <MudTextField @bind-Value="_value"
+                      Label="Value"
+                      Variant="Variant.Outlined"
+                      AutoFocus="true"
+                      Immediate="true" />
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="Cancel">
+            Cancel
+        </MudButton>
+
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   OnClick="Save">
+            Save
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public string? Value { get; set; }
+
+    private string? _value;
+
+    protected override void OnInitialized()
+    {
+        _value = Value;
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private void Save()
+    {
+        MudDialog.Close(DialogResult.Ok(_value));
+    }
+}

@@ -1,0 +1,271 @@
+@using System.Diagnostics
+@using MCServer.Services
+@implements IDisposable
+@inject ProcessMetricsService MetricsService
+
+<MudPaper Class="pa-4" Elevation="1" Style="height: 100%;">
+
+    <MudStack Spacing="1">
+
+        <MudStack Row="true"
+                  AlignItems="AlignItems.Center"
+                  Justify="Justify.SpaceBetween">
+
+            <MudText Typo="Typo.subtitle2">
+                @Title
+            </MudText>
+
+            <MudText Typo="Typo.h6">
+                @FormattedValue
+            </MudText>
+
+        </MudStack>
+
+        @if (ShowProgress)
+        {
+            <MudProgressLinear
+                Value="@ProgressValue"
+                Rounded="true"
+                Size="Size.Small" />
+        }
+
+    </MudStack>
+
+</MudPaper>
+
+<style>
+    .metric-graph {
+        width: 100%;
+        height: 60px;
+        overflow: hidden;
+        opacity: 0.8;
+    }
+
+    .metric-graph svg {
+        width: 100%;
+        height: 100%;
+    }
+</style>
+
+@code {
+
+    [Parameter, EditorRequired]
+    public Process Process { get; set; } = null!;
+
+    [Parameter]
+    public ProcessMetricType Metric { get; set; }
+
+    [Parameter]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter]
+    public bool ShowProgress { get; set; } = true;
+
+    [Parameter]
+    public double Value { get; set; }
+
+    [Parameter]
+    public EventCallback<double> ValueChanged { get; set; }
+
+    private ProcessMetricsSnapshot? _snapshot;
+
+    protected override void OnInitialized()
+    {
+        MetricsService.Register(Process);
+
+        MetricsService.MetricsUpdated += OnMetricsUpdated;
+
+        UpdateValue();
+    }
+
+    private void OnMetricsUpdated(object? sender, ProcessMetricsSnapshot snapshot)
+    {
+        try
+        {
+            if (snapshot.ProcessId != Process.Id)
+                return;
+        }
+        catch
+        {
+            return;
+        }
+
+        _snapshot = snapshot;
+
+        UpdateValue();
+
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void UpdateValue()
+    {
+        var snapshot =
+            MetricsService.GetSnapshot(Process);
+
+        if (snapshot is null) return;
+
+        _snapshot = snapshot;
+
+        var newValue = GetMetricValue(snapshot);
+
+        if (Math.Abs(Value - newValue) > double.Epsilon)
+        {
+            Value = newValue;
+
+            if (ValueChanged.HasDelegate)
+                _ = ValueChanged.InvokeAsync(Value);
+        }
+    }
+
+    private double GetMetricValue(ProcessMetricsSnapshot snapshot)
+    {
+        return Metric switch
+        {
+            ProcessMetricType.Cpu =>
+                snapshot.CpuPercent,
+
+            ProcessMetricType.Memory =>
+                snapshot.WorkingSetBytes,
+
+            ProcessMetricType.Threads =>
+                snapshot.ThreadCount,
+
+            ProcessMetricType.DiskRead =>
+                snapshot.DiskReadBytesPerSecond,
+
+            ProcessMetricType.DiskWrite =>
+                snapshot.DiskWriteBytesPerSecond,
+
+            ProcessMetricType.NetworkReceive =>
+                snapshot.NetworkReceiveBytesPerSecond,
+
+            ProcessMetricType.NetworkSend =>
+                snapshot.NetworkSendBytesPerSecond,
+
+            _ => 0
+        };
+    }
+
+    private string FormattedValue
+    {
+        get
+        {
+            return Metric switch
+            {
+                ProcessMetricType.Cpu =>
+                    $"{Value:0.0}%",
+
+                ProcessMetricType.Memory =>
+                    FormatBytes((long)Value),
+
+                ProcessMetricType.Threads =>
+                    $"{Value:0}",
+
+                ProcessMetricType.DiskRead =>
+                    $"{FormatBytes((long)Value)}/s",
+
+                ProcessMetricType.DiskWrite =>
+                    $"{FormatBytes((long)Value)}/s",
+
+                ProcessMetricType.NetworkReceive =>
+                    $"{FormatBytes((long)Value)}/s",
+
+                ProcessMetricType.NetworkSend =>
+                    $"{FormatBytes((long)Value)}/s",
+
+                _ => Value.ToString("0.0")
+            };
+        }
+    }
+
+    private double ProgressValue
+    {
+        get
+        {
+            return Metric switch
+            {
+                ProcessMetricType.Cpu =>
+                    Math.Clamp(Value, 0, 100),
+
+                _ => 0
+            };
+        }
+    }
+
+    private string GraphPoints
+    {
+        get
+        {
+            var history =
+                MetricsService.GetHistory(Process);
+
+            if (history.Count < 2)
+                return string.Empty;
+
+            var values =
+                history
+                    .Select(GetMetricValue)
+                    .ToArray();
+
+            var min = values.Min();
+            var max = values.Max();
+
+            if (Math.Abs(max - min) < 0.001)
+            {
+                min -= 1;
+                max += 1;
+            }
+
+            var points =
+                new List<string>(values.Length);
+
+            for (var i = 0; i < values.Length; i++)
+            {
+                var x =
+                    i /
+                    (double)(values.Length - 1) *
+                    400;
+
+                var normalized =
+                    (values[i] - min) /
+                    (max - min);
+
+                var y =
+                    95 - normalized * 90;
+
+                points.Add(
+                    $"{x:0.##},{y:0.##}");
+            }
+
+            return string.Join(' ', points);
+        }
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        const double KB = 1024;
+        const double MB = KB * 1024;
+        const double GB = MB * 1024;
+
+        return bytes switch
+        {
+            >= (long)GB =>
+                $"{bytes / GB:0.00} GB",
+
+            >= (long)MB =>
+                $"{bytes / MB:0.0} MB",
+
+            >= (long)KB =>
+                $"{bytes / KB:0} KB",
+
+            _ =>
+                $"{bytes} B"
+        };
+    }
+
+    public void Dispose()
+    {
+        MetricsService.MetricsUpdated -=
+            OnMetricsUpdated;
+    }
+}

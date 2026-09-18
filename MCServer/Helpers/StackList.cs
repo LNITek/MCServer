@@ -76,17 +76,33 @@ public class StackList : ObservableCollection<ConsoleLine>
     }
 }
 
-public class ConsoleLine(DateTime dateTime, Color type, string msg)
+public class ConsoleLine(DateTime dateTime, ConsoleLineType type, string msg)
 {
     public DateTime DateTime { get; set; } = dateTime;
-    public Color Type { get; set; } = type;
+    public ConsoleLineType Type { get; set; } = type;
     public string Line { get; set; } = msg;
     public bool IncludeInfoStamp { get; set; } = true;
+
+    public Color Colour => Type switch
+        {
+            ConsoleLineType.Standard => Color.Default,
+            ConsoleLineType.Info => Color.Info,
+            ConsoleLineType.Success => Color.Success,
+            ConsoleLineType.Warning => Color.Warning,
+            ConsoleLineType.Error => Color.Error,
+            _ => Color.Default,
+        };
+
+    public string TypeString => Type switch
+        {
+            ConsoleLineType.Standard => nameof(ConsoleLineType.Info),
+            _ => Type.ToString(),
+        };
 
     public override string ToString()
     {
         if (IncludeInfoStamp)
-            return $"[{DateTime:yyyy-MM-dd HH:mm:ss:fff} {Type}] {Line}";
+            return $"[{DateTime:yyyy-MM-dd HH:mm:ss:fff} {TypeString}] {Line}";
         return Line;
     }
 }

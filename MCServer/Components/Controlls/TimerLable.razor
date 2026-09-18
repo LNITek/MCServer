@@ -1,0 +1,80 @@
+@implements IDisposable
+
+<MudText Typo="Typo.body2" Class="@Class">
+    @Label@_uptime
+</MudText>
+
+@code {
+    private DateTime? _Started;
+    private string _uptime = "00:00:00";
+
+    private PeriodicTimer? _timer;
+    private CancellationTokenSource? _cts;
+
+    protected override void OnInitialized()
+    {
+        // Get this from your server data
+        _Started = StartedTime;
+
+        _ = UpdateUptimeAsync();
+    }
+
+    private async Task UpdateUptimeAsync()
+    {
+        _cts = new CancellationTokenSource();
+        _timer = new PeriodicTimer(TimeSpan.FromSeconds(2));
+
+        UpdateUptime();
+
+        try
+        {
+            while (await _timer.WaitForNextTickAsync(_cts.Token))
+            {
+                UpdateUptime();
+
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Component was disposed
+        }
+    }
+
+    private void UpdateUptime()
+    {
+        var uptime = DateTime.Now.ToUniversalTime() - (_Started ?? DateTime.Now).ToUniversalTime();
+
+        if (uptime < TimeSpan.Zero)
+            uptime = TimeSpan.Zero;
+
+        _uptime = FormatUptime(uptime);
+    }
+
+    private static string FormatUptime(TimeSpan uptime)
+    {
+        if (uptime.TotalDays >= 1)
+        {
+            return $"{(int)uptime.TotalDays}d " +
+                   $"{uptime.Hours:00}h " +
+                   $"{uptime.Minutes:00}m";
+        }
+
+        return $"{uptime.Hours:00}h " +
+               $"{uptime.Minutes:00}m " +
+               $"{uptime.Seconds:00}s";
+    }
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _timer?.Dispose();
+    }
+
+    [Parameter, EditorRequired]
+    public DateTime? StartedTime { get; set; }
+
+    [Parameter] public string Label { get; set; } = string.Empty;
+    [Parameter] public string Class { get; set; } = string.Empty;
+}

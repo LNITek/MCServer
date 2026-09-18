@@ -1,6 +1,7 @@
 using MCServer;
 using MCServer.Components;
 using MCServer.Server;
+using MCServer.Services;
 using MudBlazor;
 using MudBlazor.Services;
 
@@ -51,6 +52,7 @@ public class Program
 
         var gameServers = new GameServers();
         builder.Services.AddSingleton(gameServers);
+        builder.Services.AddSingleton<ProcessMetricsService>();
 
         var app = builder.Build();
 

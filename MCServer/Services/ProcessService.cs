@@ -26,6 +26,8 @@ public static class ProcessService
     
     private static void Start(this MCBedrockServer server)
     {
+        MaintenanceService.UpdateTask(server);
+        
         server.StartupDate = DateTime.Today;
         if (server.CommandRunning) return;
         if (server.ServerRunning)
@@ -37,7 +39,7 @@ public static class ProcessService
         server.CommandRunning = true;
         server.ServerRunning = true;
 
-        server.WriteDisplayLine("Starting Server".ToUpper(), Color.Info);
+        server.WriteDisplayLine("Starting Server".ToUpper());
 
         server.ServerProcess.StartInfo.UseShellExecute = false;
         server.ServerProcess.StartInfo.RedirectStandardInput = true;

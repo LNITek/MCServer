@@ -16,7 +16,7 @@ public partial class MCBedrockServer : INotifyPropertyChanged, IDisposable, IGam
 {
     public ServerSettings Settings { get; }
     public string ServerPath => Settings.FullPath;
-    public DateTime StartupDate { get; set; }
+    public DateTime? StartupDate { get; set; } = null;
     [NotifyChanged([nameof(ServerRunningStatus), nameof(ServerExitedStatus), nameof(RunningStatus)])]
     bool serverRunning = false;
     [NotifyChanged([nameof(ServerRunningStatus), nameof(ServerExitedStatus)])]
@@ -24,6 +24,16 @@ public partial class MCBedrockServer : INotifyPropertyChanged, IDisposable, IGam
     public bool ServerRunningStatus => CommandRunning || ServerRunning;
     public bool ServerExitedStatus => CommandRunning || !ServerRunning;
     public Color RunningStatus => ServerRunning ? Color.Success : Color.Error;
+
+    public (Color inticator, string status) ServerStatus
+    {
+        get
+        {
+            if (!ServerRunning && CommandRunning)
+                return (Color.Warning, "Maintenance");
+            return ServerRunning ? (Color.Success, "Online") : (Color.Error, "Offline");
+        }
+    }
 
     public StackList OutputList { get; set; } = new(100);
     public Process ServerProcess = new();
@@ -144,7 +154,7 @@ public partial class MCBedrockServer : INotifyPropertyChanged, IDisposable, IGam
     {
         var output = OutputList.LastOrDefault();
         if(output is null) 
-            output = new(DateTime.Now, Color.Info, Line);
+            output = new(DateTime.Now, ConsoleLineType.Standard, Line);
         OutputList.Remove(output);
         output.Line = Line;
         OutputList.Add(output);
@@ -154,15 +164,15 @@ public partial class MCBedrockServer : INotifyPropertyChanged, IDisposable, IGam
     {
         var output = OutputList.LastOrDefault();
         if(output is null) 
-            output = new(DateTime.Now, Color.Info, Line);
+            output = new(DateTime.Now, ConsoleLineType.Standard, Line);
         OutputList.Remove(output);
         output.Line += Line;
         OutputList.Add(output);
     }
 
-    public void WriteDisplayLine(string Line, Color Color, bool InfoStamp = true)
+    public void WriteDisplayLine(string Line, ConsoleLineType Type, bool InfoStamp = true)
     {
-        OutputList.Add(new(DateTime.Now, Color, Line) { IncludeInfoStamp = InfoStamp });
+        OutputList.Add(new(DateTime.Now, Type, Line) { IncludeInfoStamp = InfoStamp });
 
         //Dispatcher?.Invoke(() =>
         //{
@@ -175,21 +185,21 @@ public partial class MCBedrockServer : INotifyPropertyChanged, IDisposable, IGam
 
     public void WriteDisplayLine(string Line, bool InfoStamp = true)
     {
-        OutputList.Add(new(DateTime.Now, Color.Info, Line) { IncludeInfoStamp = InfoStamp });
+        OutputList.Add(new(DateTime.Now, ConsoleLineType.Standard, Line) { IncludeInfoStamp = InfoStamp });
     }
 
     public void WriteProcessExit(object sender, EventArgs e)
     {
-        if (OutputList.Any(x => x.Line.Contains("Exiting program") && x.Type == Color.Error /*x.Contains("ERROR")*/))
+        if (OutputList.Any(x => x.Line.Contains("Exiting program") && x.Type == ConsoleLineType.Error /*x.Contains("ERROR")*/))
         {
             /*var Dump = new StreamWriter(Path.Combine(server.ServerPath, "LOGS", $"ERROR {DateTime.Now:yyyy-MM-dd HH-mm-ss}.txt"));
             server.OutputList.ForEach((x) => Dump.WriteLine(x));
             Dump.Close();*/
             //OtherController.ThrowLog("BC-S01 | Server Terminated. Internal ERROR");
-            WriteDisplayLine("Server Stopped With Error.", Color.Error);
+            WriteDisplayLine("Server Stopped With Error.", ConsoleLineType.Error);
         }
         else
-            WriteDisplayLine("Server Stopped.", Color.Info);
+            WriteDisplayLine("Server Stopped.");
 
         foreach (var player in PlayerList.Where(x => x.IsOnline))
         {
@@ -202,7 +212,7 @@ public partial class MCBedrockServer : INotifyPropertyChanged, IDisposable, IGam
     public void WriteProcessError(object sender, DataReceivedEventArgs e)
     {
         var Out = e.Data ?? "{NULL}";
-        WriteDisplayLine(Out, Color.Error, true);
+        WriteDisplayLine(Out, ConsoleLineType.Error, true);
     }
     
     public void WriteProcessOut(object sender, DataReceivedEventArgs e)
@@ -255,13 +265,13 @@ public partial class MCBedrockServer : INotifyPropertyChanged, IDisposable, IGam
         }
 
         if (Out.Contains("INFO"))
-            WriteDisplayLine(Out, Color.Info, false);
+            WriteDisplayLine(Out, ConsoleLineType.Info, false);
         else if (Out.Contains("WARN"))
-            WriteDisplayLine(Out, Color.Warning, false);
+            WriteDisplayLine(Out, ConsoleLineType.Warning, false);
         else if (Out.Contains("ERROR"))
-            WriteDisplayLine(Out, Color.Error, false);
+            WriteDisplayLine(Out, ConsoleLineType.Error, false);
 
-        else WriteDisplayLine(Out, Color.Info);
+        else WriteDisplayLine(Out, ConsoleLineType.Standard);
     }
     
     public void SetAsChildProcess()
