@@ -5,12 +5,26 @@ namespace MCServer.Server;
 
 public class GameServers : List<IGameServer>, IDisposable
 {
+    private readonly Lock _lock = new();
+
     public void Register(IEnumerable<ServerSettings> settings)
     {
-        this.AddRange(settings.Select(FindGameServer).OfType<IGameServer>());
+        lock (_lock)
+        {
+            foreach (var setting in settings)
+                RegisterLocked(setting);
+        }
     }
 
     public void Register(ServerSettings setting)
+    {
+        lock (_lock)
+        {
+            RegisterLocked(setting);
+        }
+    }
+
+    private void RegisterLocked(ServerSettings setting)
     {
         if (FindGameServer(setting) is { } s)
             this.Add(s);

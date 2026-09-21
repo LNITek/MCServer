@@ -154,7 +154,7 @@ public partial class MCBedrockServer : INotifyPropertyChanged, IDisposable, IGam
     {
         var output = OutputList.LastOrDefault();
         if(output is null) 
-            output = new(DateTime.Now, ConsoleLineType.Standard, Line);
+            output = new(DateTime.Now, ConsoleLineType.Status, Line);
         OutputList.Remove(output);
         output.Line = Line;
         OutputList.Add(output);
@@ -164,7 +164,7 @@ public partial class MCBedrockServer : INotifyPropertyChanged, IDisposable, IGam
     {
         var output = OutputList.LastOrDefault();
         if(output is null) 
-            output = new(DateTime.Now, ConsoleLineType.Standard, Line);
+            output = new(DateTime.Now, ConsoleLineType.Status, Line);
         OutputList.Remove(output);
         output.Line += Line;
         OutputList.Add(output);
@@ -185,7 +185,7 @@ public partial class MCBedrockServer : INotifyPropertyChanged, IDisposable, IGam
 
     public void WriteDisplayLine(string Line, bool InfoStamp = true)
     {
-        OutputList.Add(new(DateTime.Now, ConsoleLineType.Standard, Line) { IncludeInfoStamp = InfoStamp });
+        OutputList.Add(new(DateTime.Now, ConsoleLineType.Status, Line) { IncludeInfoStamp = InfoStamp });
     }
 
     public void WriteProcessExit(object sender, EventArgs e)
@@ -271,7 +271,7 @@ public partial class MCBedrockServer : INotifyPropertyChanged, IDisposable, IGam
         else if (Out.Contains("ERROR"))
             WriteDisplayLine(Out, ConsoleLineType.Error, false);
 
-        else WriteDisplayLine(Out, ConsoleLineType.Standard);
+        else WriteDisplayLine(Out, ConsoleLineType.Status);
     }
     
     public void SetAsChildProcess()

@@ -2,7 +2,7 @@ namespace MCServer.Helpers;
 
 public enum ConsoleLineType
 {
-    Standard,
+    Status,
     Info,
     Success,
     Warning,

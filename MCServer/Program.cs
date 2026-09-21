@@ -2,6 +2,7 @@ using MCServer;
 using MCServer.Components;
 using MCServer.Server;
 using MCServer.Services;
+using Microsoft.Extensions.Options;
 using MudBlazor;
 using MudBlazor.Services;
 
@@ -55,6 +56,9 @@ public class Program
         builder.Services.AddSingleton<ProcessMetricsService>();
 
         var app = builder.Build();
+
+        Settings = app.Services.GetRequiredService<IOptions<AppSettings>>().Value;
+        gameServers.Register(Settings.ServerSettings);
 
         // Configure the HTTP request pipeline.
         if (!app.Environment.IsDevelopment())

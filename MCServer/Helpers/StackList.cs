@@ -85,7 +85,7 @@ public class ConsoleLine(DateTime dateTime, ConsoleLineType type, string msg)
 
     public Color Colour => Type switch
         {
-            ConsoleLineType.Standard => Color.Default,
+            ConsoleLineType.Status => Color.Default,
             ConsoleLineType.Info => Color.Info,
             ConsoleLineType.Success => Color.Success,
             ConsoleLineType.Warning => Color.Warning,
@@ -95,7 +95,7 @@ public class ConsoleLine(DateTime dateTime, ConsoleLineType type, string msg)
 
     public string TypeString => Type switch
         {
-            ConsoleLineType.Standard => nameof(ConsoleLineType.Info),
+            ConsoleLineType.Status => nameof(ConsoleLineType.Info),
             _ => Type.ToString(),
         };
 

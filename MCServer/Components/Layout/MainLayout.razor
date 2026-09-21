@@ -1,11 +1,9 @@
 ﻿@using System.Reflection.Metadata.Ecma335
 @using System.Text.Json
 @using System.Text.Json.Serialization.Metadata
-@using Microsoft.Extensions.Options
 @inherits LayoutComponentBase
 @inject ILocalStorageService Storage;
 @inject ISnackbar Snackbar
-@inject IOptions<AppSettings> Config;
 @inject NavigationManager Nav
 @inject GameServers Servers
 
@@ -17,6 +15,13 @@
 <style>
     .mud-badge.mud-badge-bottom.right {
         inset: auto;
+    }
+    .mud-navmenu {
+        height: 100%;
+        margin: 0;
+        position: relative;
+        list-style: none;
+        overscroll-behavior-y: contain;
     }
 </style>
 
@@ -35,47 +40,58 @@
             </MudStack>
         </MudDrawerHeader>
         <MudNavMenu>
-            <MudNavLink Href="/" Icon="@Icons.Rounded.Dashboard">Dashboard</MudNavLink>
+            <MudNavLink Href="/dashboard" Icon="@Icons.Rounded.Dashboard">Dashboard</MudNavLink>
 
             <TextDivider Text="Servers" />
             
             @* <MudNavGroup Icon="@Icons.Rounded.Dns" Title="Servers"> *@
             @*     <ChildContent> *@
-                    @foreach (var server in Servers)
-                    {//Href="/servers"
-                        // Icon="@Icons.Filled._1K" Title="Default"
-                        <MudNavGroup>
-                            <TitleContent>
-                                <MudStack Row Spacing="0" Style="margin-left: -12px; height:24.5px">
-                                    <MudBadge Origin="Origin.BottomRight" Color="@server.RunningStatus" Dot>
-                                        <MudIcon Icon="@Icons.Rounded.Monitor"
-                                                 Class="mud-icon-root mud-icon-default mud-icon-size-medium mud-nav-link-icon mud-nav-link-icon-default material-icons-round" />
-                                    </MudBadge>
-                                    <div class="mud-nav-link-text">
-                                        <a href="@($"/servers/{server.Settings.ID}")">@server.Settings.Name</a>
-                                    </div>
-                                </MudStack>
-                            </TitleContent>
-                            <ChildContent>
-                                <MudNavLink Icon="@Icons.Rounded.Terminal" Href="@($"/servers/{server.Settings.ID}/console")">Console</MudNavLink>
-                                <MudNavLink Icon="@Icons.Rounded.HomeRepairService" Href="@($"/servers/{server.Settings.ID}/props")">Properties</MudNavLink>
-                                <MudNavLink Icon="@Icons.Rounded.AdminPanelSettings" Href="@($"/servers/{server.Settings.ID}/player-settings")">Player Settings</MudNavLink>
-                                <MudNavLink Icon="@Icons.Rounded.Backpack" Href="@($"/servers/{server.Settings.ID}/packets")">Packet Configs</MudNavLink>
-                                <MudNavLink Icon="@Icons.Rounded.Timer" Href="@($"/servers/{server.Settings.ID}/schedules")">Schedules</MudNavLink>
-                            </ChildContent>
-                        </MudNavGroup>
-                    }
+            @foreach (var server in Servers)
+            {//Href="/servers"
+                // Icon="@Icons.Filled._1K" Title="Default"
+                @* <MudNavGroup> *@
+                @*     <TitleContent> *@
+                @*         <MudStack Row Spacing="0" Style="margin-left: -12px; height:24.5px"> *@
+                @*             <MudBadge Origin="Origin.BottomRight" Color="@server.RunningStatus" Dot> *@
+                @*                 <MudIcon Icon="@Icons.Rounded.Monitor" *@
+                @*                          Class="mud-icon-root mud-icon-default mud-icon-size-medium mud-nav-link-icon mud-nav-link-icon-default material-icons-round" /> *@
+                @*             </MudBadge> *@
+                @*             <div class="mud-nav-link-text"> *@
+                @*                 <a href="@($"/servers/{server.Settings.ID}")">@server.Settings.Name</a> *@
+                @*             </div> *@
+                @*         </MudStack> *@
+                @*     </TitleContent> *@
+                @*     <ChildContent> *@
+                @*         <MudNavLink Icon="@Icons.Rounded.Terminal" Href="@($"/servers/{server.Settings.ID}/console")">Console</MudNavLink> *@
+                @*         <MudNavLink Icon="@Icons.Rounded.HomeRepairService" Href="@($"/servers/{server.Settings.ID}/props")">Properties</MudNavLink> *@
+                @*         <MudNavLink Icon="@Icons.Rounded.AdminPanelSettings" Href="@($"/servers/{server.Settings.ID}/player-settings")">Player Settings</MudNavLink> *@
+                @*         <MudNavLink Icon="@Icons.Rounded.Backpack" Href="@($"/servers/{server.Settings.ID}/packets")">Packet Configs</MudNavLink> *@
+                @*         <MudNavLink Icon="@Icons.Rounded.Timer" Href="@($"/servers/{server.Settings.ID}/schedules")">Schedules</MudNavLink> *@
+                @*     </ChildContent> *@
+                @* </MudNavGroup> *@
+                        
+                <MudNavLink href="@($"/servers/{server.Settings.ID}")">
+                    <ChildContent>
+                        <MudStack Row Spacing="3" Style="margin-left: -12px; height:24.5px">
+                            <MudBadge Origin="Origin.BottomRight" Color="@server.RunningStatus" Dot>
+                                <MudIcon Icon="@Icons.Rounded.Monitor"
+                                         Class="mud-icon-root mud-icon-default mud-icon-size-medium mud-nav-link-icon mud-nav-link-icon-default material-icons-round" />
+                            </MudBadge>
+                                    
+                            @server.Settings.Name
+                        </MudStack>
+                    </ChildContent>
+                </MudNavLink>
+            }
             @*     </ChildContent> *@
             @* </MudNavGroup> *@
-
-            <MudSpacer />
-            
-            <MudDivider Class="my-2" />
-
-            <MudNavLink Icon="@Icons.Rounded.StickyNote2" Href="/docs/host/notes">How To</MudNavLink>
-            <MudNavLink Icon="@Icons.Rounded.EventNote" Href="/docs/host/releases">Release Notes</MudNavLink>
-            <MudNavLink Icon="@Icons.Rounded.Settings" Href="/settings">Settings</MudNavLink>
         </MudNavMenu>
+        
+        <MudDivider Class="my-2" />
+
+        <MudNavLink Icon="@Icons.Rounded.StickyNote2" Href="/docs/host/notes">How To</MudNavLink>
+        <MudNavLink Icon="@Icons.Rounded.EventNote" Href="/docs/host/releases">Release Notes</MudNavLink>
+        <MudNavLink Icon="@Icons.Rounded.Settings" Href="/settings">Settings</MudNavLink>
     </MudDrawer>
     <MudMainContent Style="height:100%; display:flex; flex-direction:column;">
         <div style="height:100%; display:flex; flex-direction:column; padding:18px;">
@@ -135,12 +151,10 @@
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         Program.Snackbar = Snackbar;
-        Program.Settings = Config.Value;
         
         if (firstRender)
         {
             IsDarkMode = (await Storage.GetItemAsync<bool?>(nameof(IsDarkMode))) ?? await _mudThemeProvider.GetSystemDarkModeAsync();
-            Servers.Register(Program.Settings.ServerSettings);
             StateHasChanged();
         }
     }
