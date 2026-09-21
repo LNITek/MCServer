@@ -1,4 +1,5 @@
 ﻿@page "/servers/{serverId}"
+@using System.Collections.ObjectModel
 @inject NavigationManager Nav
 @inject IDialogService DialogService
 @inject GameServers GameServers
@@ -29,6 +30,42 @@
 {
     <div style="flex-grow:1; overflow:auto; margin-right: -10px; padding-right: 10px;">
         <MudGrid Spacing="3">
+            <!-- Navigation -->
+            <MudItem xs="6" md="10">
+                <MudHidden Breakpoint="Breakpoint.MdAndDown">
+                    <MudStack Row="true">
+                        <MudButton Href="@($"/servers/{Server.Settings.ID}/console")" Variant="Variant.Outlined" StartIcon="@Icons.Filled.Terminal">Console</MudButton>
+                        <MudButton Href="@($"/servers/{Server.Settings.ID}/props")" Variant="Variant.Outlined" StartIcon="@Icons.Filled.HomeRepairService">Properties</MudButton>
+                        <MudButton Href="@($"/servers/{Server.Settings.ID}/player-settings")" Variant="Variant.Outlined" StartIcon="@Icons.Filled.Terminal">Player Settings</MudButton>
+                        <MudButton Href="@($"/servers/{Server.Settings.ID}/packets")" Variant="Variant.Outlined" StartIcon="@Icons.Filled.Backpack">Packet Configs</MudButton>
+                        <MudButton Href="@($"/servers/{Server.Settings.ID}/schedules")" Variant="Variant.Outlined" StartIcon="@Icons.Filled.Timer">Schedules</MudButton>
+                    </MudStack>
+                </MudHidden>
+                <MudHidden Breakpoint="Breakpoint.LgAndUp">
+                    <div style="justify-content: start; display: flex;">
+                        <MudButtonGroup Color="Color.Primary" Variant="Variant.Outlined">
+                            <MudButton Style="width: 100%;">Menus</MudButton>
+                            <MudMenu Icon="@Icons.Filled.ArrowDropDown" Style="align-self: auto;">
+                                <MudMenuItem Href="@($"/servers/{Server.Settings.ID}/console")" Icon="@Icons.Filled.Terminal">Console</MudMenuItem>
+                                <MudMenuItem Href="@($"/servers/{Server.Settings.ID}/props")" Icon="@Icons.Filled.HomeRepairService">Properties</MudMenuItem>
+                                <MudMenuItem Href="@($"/servers/{Server.Settings.ID}/player-settings")" Icon="@Icons.Filled.Terminal">Player Settings</MudMenuItem>
+                                <MudMenuItem Href="@($"/servers/{Server.Settings.ID}/packets")" Icon="@Icons.Filled.Backpack">Packet Configs</MudMenuItem>
+                                <MudMenuItem Href="@($"/servers/{Server.Settings.ID}/schedules")" Icon="@Icons.Filled.Timer">Schedules</MudMenuItem>
+                            </MudMenu>
+                        </MudButtonGroup>
+                    </div>
+                </MudHidden>
+            </MudItem>
+            <MudItem xs="6" md="2">
+                <div style="justify-content: end; display: flex;">
+                    <MudButtonGroup Color="Color.Primary" Variant="Variant.Filled">
+                        <MudButton Style="width: 100%;">Commands</MudButton>
+                        <MudMenu Icon="@Icons.Filled.ArrowDropDown" Style="align-self: auto;">
+                        </MudMenu>
+                    </MudButtonGroup>
+                </div>
+            </MudItem>
+            
             <!-- Header -->
             <MudItem xs="12">
                 <MudPaper Class="pa-4">
@@ -83,7 +120,7 @@
                                ShowProgress="false"/>
                 @* @bind-Value="@MetricValues[ProcessMetricType.DiskWrite]" *@
             </MudItem>
-            
+
             <!-- Performance graph -->
             @* <MudItem xs="12"> *@
             @*     <MudPaper Class="pa-4 dashboard-chart"> *@
@@ -94,7 +131,7 @@
             @*                   ChartOptions="@ChartOptions" /> *@
             @*     </MudPaper> *@
             @* </MudItem> *@
-            
+
             <!-- Player activity -->
             <MudItem xs="12">
                 <MudPaper Class="pa-4 dashboard-panel">
@@ -115,20 +152,40 @@
                 <MudPaper Class="pa-3">
                     <MudExpansionPanel>
                         <TitleContent>
-                            <MudStack Row="true" Spacing="4" AlignItems="AlignItems.Center">
+                            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
                                 <MudIcon Icon="@Icons.Filled.Error" Color="Color.Error"/>
                                 <MudText Color="Color.Error">
-                                    @Errors.Count
+                                    @ErrorCount
                                 </MudText>
                                 <MudText Color="Color.Error">
                                     Errors
+                                </MudText>
+                                
+                                <MudDivider Vertical="true"/>
+                                
+                                <MudIcon Icon="@Icons.Filled.Warning" Color="Color.Warning"/>
+                                <MudText Color="Color.Warning">
+                                    @WarningCount
+                                </MudText>
+                                <MudText Color="Color.Warning">
+                                    Warnings
+                                </MudText>
+                                
+                                <MudDivider Vertical="true"/>
+                                
+                                <MudIcon Icon="@Icons.Filled.Info" Color="Color.Info"/>
+                                <MudText Color="Color.Info">
+                                    @InfoCount
+                                </MudText>
+                                <MudText Color="Color.Info">
+                                    Status
                                 </MudText>
                             </MudStack>
                         </TitleContent>
                         <ChildContent>
                             <div style="flex-grow:1;">
                                 <MudStack Spacing="2">
-                                    @foreach (var item in Errors)
+                                    @foreach (var item in StatusLines)
                                     {
                                         <MudText Color="@item.Colour">
                                             @(item.ToString())
@@ -160,7 +217,11 @@
     private List<ChartSeries<int>> PlayerChart = new();
     public int[] PlayerCount_History = new int[24];
 
-    public List<ConsoleLine> Errors { get; set; } = [];
+    ObservableCollection<ConsoleLine> StatusList = [];
+    public ExList<ConsoleLine> StatusLines { get; set; }
+    public int ErrorCount => StatusList.Count(x => x.Type is ConsoleLineType.Error);
+    public int WarningCount => StatusList.Count(x => x.Type is ConsoleLineType.Warning);
+    public int InfoCount => StatusList.Count(x => x.Type is ConsoleLineType.Status);
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -198,13 +259,19 @@
             MetricValues.First().NewValuePushed += (s, e) => InvokeAsync(StateHasChanged);
             Server.OutputList.CollectionChanged += (s, e) =>
             {
-                var newErrors = e.NewItems.OfType<ConsoleLine>().Where(x => x.Type == ConsoleLineType.Error);
+                var newErrors = e.NewItems.OfType<ConsoleLine>().Where(x => x.Type is ConsoleLineType.Error or ConsoleLineType.Warning or ConsoleLineType.Status);
                 if (newErrors.Any())
                 {
-                    Errors.AddRange(newErrors);
+                    StatusList.AddRange(newErrors);
                     InvokeAsync(StateHasChanged);
                 }
             };
+
+            StatusList.Clear();
+            StatusLines = new(StatusList);
+            StatusLines.SetSort((a, b) => b.DateTime.CompareTo(a.DateTime));
+            StatusList.AddRange(Server.OutputList.Where(x => x.Type is ConsoleLineType.Error or ConsoleLineType.Warning or ConsoleLineType.Status));
+            
             StateHasChanged();
         }
 
