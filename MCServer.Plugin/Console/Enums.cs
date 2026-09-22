@@ -1,4 +1,4 @@
-namespace MCServer.Helpers;
+namespace MCServer.Plugins;
 
 public enum ConsoleLineType
 {

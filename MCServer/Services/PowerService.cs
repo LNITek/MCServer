@@ -1,25 +1,25 @@
 ﻿using System.Diagnostics;
-using MCServer.Server;
+using MCServer.Plugins;
 
 namespace MCServer.Services;
 
 public static class PowerService
 {
-    public static async void Exit(this IEnumerable<MCBedrockServer> servers, TimeSpan Delay)
+    public static async void Exit(this IEnumerable<IGameServer> servers, TimeSpan Delay)
     {
         foreach (var server in servers.Where(x => x.CommandRunning))
         {
-            await ProcessService.StopTask(server, Delay);
+            await server.StopAsync("Exiting", Delay);
             server.CommandRunning = true;
         }
         Environment.Exit(0);
     }
 
-    public static async void Power(this IEnumerable<MCBedrockServer> servers, TimeSpan Delay, PowerMode Mode)
+    public static async void Power(this IEnumerable<IGameServer> servers, TimeSpan Delay, PowerMode Mode)
     {
         foreach (var server in servers.Where(x => x.CommandRunning))
         {
-            await ProcessService.StopTask(server,Delay);
+            await server.StopAsync("Powering", Delay);
             server.CommandRunning = true;
         }
         Shutdown(Mode);
@@ -57,11 +57,5 @@ public static class PowerService
         LogOff = 1,
         Shutdown = 2,
         Restart = 3,
-        /*PowerOff = 8,
-
-        ForceLogOff = 4,
-        ForceShutdown = 5,
-        ForceRestart = 6,
-        ForcePowerOff = 12,*/
     }
 }

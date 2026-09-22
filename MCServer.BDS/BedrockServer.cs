@@ -1,21 +1,21 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using ExtraFunctions.ExGenerators;
 using ExtraFunctions.Extras;
-using MCServer.Helpers;
-using MCServer.Services;
-using Microsoft.Extensions.Options;
+using MCServer.BDS.Services;
+using MCServer.Plugins;
 using MudBlazor;
 
-namespace MCServer.Server;
+namespace MCServer.BDS;
 
-public partial class MCBedrockServer : INotifyPropertyChanged, IDisposable, IGameServer
+public partial class BedrockServer : INotifyPropertyChanged, IGameServer
 {
     public ServerSettings Settings { get; }
-    public string ServerPath => Settings.FullPath;
+    public IServerHost Host { get; }
+    public string ServerPath => Settings.GetFullPath(Host.ServerFilesRoot);
     public DateTime? StartupDate { get; set; } = null;
     [NotifyChanged([nameof(ServerRunningStatus), nameof(ServerExitedStatus), nameof(RunningStatus)])]
     bool serverRunning = false;
@@ -25,7 +25,7 @@ public partial class MCBedrockServer : INotifyPropertyChanged, IDisposable, IGam
     public bool ServerExitedStatus => CommandRunning || !ServerRunning;
     public Color RunningStatus => ServerRunning ? Color.Success : Color.Error;
 
-    public (Color inticator, string status) ServerStatus
+    public (Color Indicator, string Status) ServerStatus
     {
         get
         {
@@ -35,9 +35,11 @@ public partial class MCBedrockServer : INotifyPropertyChanged, IDisposable, IGam
         }
     }
 
+    public int PlayerCount => PlayerList.Count;
+
     public StackList OutputList { get; set; } = new(100);
-    public Process ServerProcess = new();
-    public Thread ServerThread { get; set; }
+    public Process ServerProcess { get; } = new();
+    public Thread ServerThread { get; set; } = null!;
     public Semaphore CommandQue = new(1, 1);
     private IntPtr _jobHandle = IntPtr.Zero;
 
@@ -46,11 +48,13 @@ public partial class MCBedrockServer : INotifyPropertyChanged, IDisposable, IGam
 
     public ObservableCollection<Schedule> ServerSchedules { get; } = [];
     public ObservableCollection<Player> PlayerList { get; set; } = [];
-    public static ServerCommandList Commands { get; set; }
-    
-    public MCBedrockServer(ServerSettings settings)
+
+    public IReadOnlyList<ServerDocFile> DocFiles { get; }
+
+    public BedrockServer(ServerSettings settings, IServerHost host)
     {
         Settings = settings;
+        Host = host;
         PlayerList.AddRange(this.GetPlayers());
         ServerSchedules.AddRange(this.GetSchedules());
         this.AddSchedules(ServerSchedules);
@@ -66,61 +70,20 @@ public partial class MCBedrockServer : INotifyPropertyChanged, IDisposable, IGam
                     break;
             }
         };
-        
-        Commands = 
+
+        DocFiles =
         [
-            //new("!"){ Description = "Stops the server, Exits the app and Power off (Shutdown) in 10 Seconds" },
-            new("Backup","Backups the active world.",[
-                new("-world","The the world to backup.", typeof(uint))])
-            {
-                OnExecution = (Args) => this.BackupServer(Args["-world"]?.Value.ToString())
-            },
-            new("Update", "Updates the server.",[])
-            {
-                OnExecution = (Args) => this.UpdateServer()
-            },
-            new("Start", "Starts the server if it's not running yet." ,[])
-            {
-                OnExecution = (Args) => this.StartServer()
-            },
-            new("Restart", "Restarts the server." ,[
-                new("-delay","The delay before restarting in seconds.", typeof(uint))
-            ])
-            {
-                OnExecution = (Args) => this.RestartServer(TimeSpan.FromSeconds(((int?)Args["-delay"]?.Value) ?? 10))
-            },
-            new("Stop", "Stops the server.", [
-                        new("-delay","The delay before stoping in seconds.", typeof(uint))
-                    ])
-                    {
-                        OnExecution = (Args) => this.StopServer(TimeSpan.FromSeconds(((int?)Args["-delay"]?.Value) ?? 10))
-                    },
-            // new("Exit", [
-            //     new(nameof(ExitCommand.Delay), typeof(int)) { Description = "The Delay Before Stoping In Seconds." }
-            //     ]) { Description = "Stops The Server And Exits The App." },
-            // new("Power", [
-            //     new(nameof(PowerCommand.Delay), typeof(int)) { Description = "The Delay Before Stoping In Seconds." },
-            //     new(nameof(PowerCommand.Mode), typeof(int)) { Description = "The Shutdown Mode To Use." }
-            //     ]) { Description = "Stops The Server And Power On/Off OS." },
+            new("notes", "How To", Path.Combine(ServerPath,"bedrock_server_how_to.html"), Icons.Material.Filled.StickyNote2),
+            new("releases", "Release Notes", Path.Combine(ServerPath,"release-notes.txt"), Icons.Material.Filled.EventNote),
         ];
-        Commands.OnCommandException += (command, ex) =>
-        {
-            if (ex.Message.StartsWith("C-01-"))
-                WriteLine(command?.ToString() ?? "");
-            else
-                Program.NotifyUser(ex.Message, Severity.Error);
-        };
-    }
-
-    public void RunCommand(string command)
-    {
-        Commands.Parse(command);
-    }
-
-    public void RefreshSchedules()
-    {
         
+        SetupCommands();
     }
+
+    public void StartServer() => BedrockProcessService.StartServer(this);
+    public void StopServer(TimeSpan delay) => BedrockProcessService.StopServer(this, delay);
+    public void RestartServer(TimeSpan delay) => BedrockProcessService.RestartServer(this, delay);
+    public Task<bool> StopAsync(string message, TimeSpan delay) => BedrockProcessService.Stop(this, message, delay);
 
     public void RefreshPlayerProperties()
     {
@@ -138,7 +101,7 @@ public partial class MCBedrockServer : INotifyPropertyChanged, IDisposable, IGam
         PlayerList.Clear();
         PlayerList.AddRange(newPlayerList);
     }
-    
+
     public void RefreshPacketConfig()
     {
         WriteLine("reloadpacketlimitconfig");
@@ -153,17 +116,17 @@ public partial class MCBedrockServer : INotifyPropertyChanged, IDisposable, IGam
     public void RewriteDisplay(string Line)
     {
         var output = OutputList.LastOrDefault();
-        if(output is null) 
+        if (output is null)
             output = new(DateTime.Now, ConsoleLineType.Status, Line);
         OutputList.Remove(output);
         output.Line = Line;
         OutputList.Add(output);
     }
-    
+
     public void WriteDisplay(string Line)
     {
         var output = OutputList.LastOrDefault();
-        if(output is null) 
+        if (output is null)
             output = new(DateTime.Now, ConsoleLineType.Status, Line);
         OutputList.Remove(output);
         output.Line += Line;
@@ -173,14 +136,6 @@ public partial class MCBedrockServer : INotifyPropertyChanged, IDisposable, IGam
     public void WriteDisplayLine(string Line, ConsoleLineType Type, bool InfoStamp = true)
     {
         OutputList.Add(new(DateTime.Now, Type, Line) { IncludeInfoStamp = InfoStamp });
-
-        //Dispatcher?.Invoke(() =>
-        //{
-        //    TextRange tr = new(Display.Document.ContentEnd, Display.Document.ContentEnd)
-        //    { Text = (NewLine ? Environment.NewLine : " ") + Line };
-        //    try { tr.ApplyPropertyValue(TextElement.ForegroundProperty, color); }
-        //    catch (FormatException) { }
-        //});
     }
 
     public void WriteDisplayLine(string Line, bool InfoStamp = true)
@@ -190,12 +145,8 @@ public partial class MCBedrockServer : INotifyPropertyChanged, IDisposable, IGam
 
     public void WriteProcessExit(object sender, EventArgs e)
     {
-        if (OutputList.Any(x => x.Line.Contains("Exiting program") && x.Type == ConsoleLineType.Error /*x.Contains("ERROR")*/))
+        if (OutputList.Any(x => x.Line.Contains("Exiting program") && x.Type == ConsoleLineType.Error))
         {
-            /*var Dump = new StreamWriter(Path.Combine(server.ServerPath, "LOGS", $"ERROR {DateTime.Now:yyyy-MM-dd HH-mm-ss}.txt"));
-            server.OutputList.ForEach((x) => Dump.WriteLine(x));
-            Dump.Close();*/
-            //OtherController.ThrowLog("BC-S01 | Server Terminated. Internal ERROR");
             WriteDisplayLine("Server Stopped With Error.", ConsoleLineType.Error);
         }
         else
@@ -208,13 +159,13 @@ public partial class MCBedrockServer : INotifyPropertyChanged, IDisposable, IGam
         };
         this.SetPlayers(PlayerList);
     }
-    
+
     public void WriteProcessError(object sender, DataReceivedEventArgs e)
     {
         var Out = e.Data ?? "{NULL}";
         WriteDisplayLine(Out, ConsoleLineType.Error, true);
     }
-    
+
     public void WriteProcessOut(object sender, DataReceivedEventArgs e)
     {
         var Out = e.Data ?? "{NULL}";
@@ -227,7 +178,7 @@ public partial class MCBedrockServer : INotifyPropertyChanged, IDisposable, IGam
 
         if (Out.Contains("Player Spawned", StringComparison.OrdinalIgnoreCase))
         {
-            var props = Out[Out.IndexOf(']')..].Split([',', ':',' ']).Where(x => !string.IsNullOrWhiteSpace(x));
+            var props = Out[Out.IndexOf(']')..].Split([',', ':', ' ']).Where(x => !string.IsNullOrWhiteSpace(x));
             var name = props.ElementAt(3).Trim([' ', '"']);
             var xuid = props.ElementAt(5).Trim([' ', '"']);
 
@@ -256,7 +207,7 @@ public partial class MCBedrockServer : INotifyPropertyChanged, IDisposable, IGam
             var name = props[1];
             var xuid = props[3];
 
-            if(PlayerList.FirstOrDefault(x => !x.Ban && (x.Xuid == xuid || x.Name == name)) is Player player)
+            if (PlayerList.FirstOrDefault(x => !x.Ban && (x.Xuid == xuid || x.Name == name)) is Player player)
             {
                 player.TotalPlayTime += DateTime.Now - (player.LastLogin ?? DateTime.Now);
                 player.IsOnline = false;
@@ -273,10 +224,10 @@ public partial class MCBedrockServer : INotifyPropertyChanged, IDisposable, IGam
 
         else WriteDisplayLine(Out, ConsoleLineType.Status);
     }
-    
+
     public void SetAsChildProcess()
     {
-        if (!Program.IsWin) return;
+        if (!Host.IsWindows) return;
 
         var job = CreateJobObject(IntPtr.Zero, null);
         if (job == IntPtr.Zero) return;
@@ -305,11 +256,15 @@ public partial class MCBedrockServer : INotifyPropertyChanged, IDisposable, IGam
     public void Dispose()
     {
         ServerRunning = false;
-        if (ServerProcess is { HasExited: false })
+        try
         {
-            try { ServerProcess.Kill(entireProcessTree: true); } catch { }
-            try { ServerProcess.Dispose(); } catch { }
+            if (ServerProcess is { HasExited: false })
+            {
+                try { ServerProcess.Kill(entireProcessTree: true); } catch { }
+            }
         }
+        catch (InvalidOperationException) { /* Process was never started. */ }
+        try { ServerProcess.Dispose(); } catch { }
         if (_jobHandle != IntPtr.Zero)
         {
             CloseHandle(_jobHandle);

@@ -1,5 +1,7 @@
 using MCServer;
+using MCServer.BDS;
 using MCServer.Components;
+using MCServer.Plugins;
 using MCServer.Server;
 using MCServer.Services;
 using Microsoft.Extensions.Options;
@@ -10,20 +12,21 @@ namespace MCServer;
 
 public class Program
 {
-    public static string AssetsPath = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(Environment.ProcessPath) ?? ".","Assets"));
-    
+    public static string AssetsPath = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(Environment.ProcessPath) ?? ".", "Assets"));
+
 #if DEBUG
-    // public static string ServerPath = Path.GetFullPath(IsWin ? "../Data/Bedrock Server/" : 
-    //     "/home/egbert/Documents/Projects/C#/MCServer/Data/Bedrock Server");
     public static string ServerPath = Path.GetFullPath("./../Data/");
 #else
     public static string ServerPath = Path.GetFullPath(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MCServer/"));
 #endif
 
+    public static string PluginsPath = Path.GetFullPath(Path.Combine(ServerPath, "Plugins"));
+
     public static bool IsWin => OperatingSystem.IsWindows();
 
     public static ISnackbar? Snackbar;
-    public static AppSettings Settings;
+    public static AppSettings Settings = new();
+    public static SettingsService? SettingsStore;
 
     public static void NotifyUser(string msg, Severity severity)
     {
@@ -51,14 +54,30 @@ public class Program
             .AddRazorComponents()
             .AddInteractiveServerComponents();
 
+        var serverHost = new ServerHost();
+        var pluginService = new PluginService(PluginsPath);
         var gameServers = new GameServers();
+
+        builder.Services.AddSingleton<IServerHost>(serverHost);
+        builder.Services.AddSingleton(pluginService);
         builder.Services.AddSingleton(gameServers);
+        builder.Services.AddSingleton<SettingsService>();
         builder.Services.AddSingleton<ProcessMetricsService>();
+        builder.Services.AddSingleton<HostMetricsService>();
 
         var app = builder.Build();
 
         Settings = app.Services.GetRequiredService<IOptions<AppSettings>>().Value;
-        gameServers.Register(Settings.ServerSettings);
+        SettingsStore = app.Services.GetRequiredService<SettingsService>();
+
+        // Built-in server plugins ship with the app; external ones load from Plugins/.
+        pluginService.RegisterBuiltIn(new BedrockPlugin());
+        pluginService.LoadFromFolder();
+
+        foreach (var plugin in pluginService.ServerPlugins)
+            gameServers.RegisterPlugin(plugin);
+
+        gameServers.Register(Settings.ServerSettings, serverHost);
 
         // Configure the HTTP request pipeline.
         if (!app.Environment.IsDevelopment())
@@ -80,5 +99,14 @@ public class Program
         app.Lifetime.ApplicationStopping.Register(() => gameServers.Dispose());
 
         app.Run();
+    }
+
+    private sealed class ServerHost : IServerHost
+    {
+        public string ServerFilesRoot => ServerPath;
+        public string BackupPath => Settings?.BackupPath ?? "";
+        public bool IsWindows => IsWin;
+        public void NotifyUser(string message, Severity severity) => Program.NotifyUser(message, severity);
+        public void SaveSettings() => SettingsStore?.Save();
     }
 }

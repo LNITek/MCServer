@@ -1,7 +1,8 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.Text.Json.Serialization;
+using ExtraFunctions.Extras;
 
-namespace MCServer.Helpers;
+namespace MCServer.BDS;
 
 public class PacketConfig
 {
@@ -35,7 +36,7 @@ public class PacketConfig
             get => string.Join(";", minecraftPacketIds);
             set
             {
-                minecraftPacketIds = [..value.Split(";", StringSplitOptions.RemoveEmptyEntries).Select<string,uint?>(x =>
+                minecraftPacketIds = [.. value.Split(";", StringSplitOptions.RemoveEmptyEntries).Select<string, uint?>(x =>
                 {
                     if (uint.TryParse(x.Trim(), out var result))
                         return result;

@@ -1,8 +1,8 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using ExtraFunctions.ExGenerators;
 using MudBlazor;
 
-namespace MCServer.Helpers
+namespace MCServer.BDS
 {
     public enum PlayerPermission
     {
@@ -63,7 +63,7 @@ namespace MCServer.Helpers
 
         public Player()
         {
-            Name = "NewPlayer"; 
+            Name = "NewPlayer";
             Xuid = string.Empty;
             Permissions = PlayerPermission.Default;
         }
@@ -72,15 +72,15 @@ namespace MCServer.Helpers
         public Permission AsPermission() => new() { permission = Permissions.ToString().ToLower(), name = name, xuid = xuid };
         public Config AsConfig() => new()
         {
-            Ban = Ban, 
-            BanTime = BanTime, 
-            BanResion = BanResion, 
-            LastLogin = LastLogin, 
-            TotalPlayTime = TotalPlayTime, 
-            name = name, 
+            Ban = Ban,
+            BanTime = BanTime,
+            BanResion = BanResion,
+            LastLogin = LastLogin,
+            TotalPlayTime = TotalPlayTime,
+            name = name,
             xuid = xuid
         };
-        
+
         public class AllowList()
         {
             public bool ignoresPlayerLimit { get; set; }
@@ -94,16 +94,16 @@ namespace MCServer.Helpers
             public string name { get; set; }
             public string xuid { get; set; }
         }
-        
+
         public class Config
         {
             public bool Ban { get; set; }
             public DateTime? BanTime { get; set; }
             public string BanResion { get; set; }
-            
+
             public DateTime? LastLogin { get; set; }
             public TimeSpan TotalPlayTime { get; set; }
-            
+
             public string name { get; set; }
             public string xuid { get; set; }
         }

@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net.NetworkInformation;
 using System.Runtime.InteropServices;
-using MCServer.Helpers;
+using MCServer.Plugins;
 
 namespace MCServer.Services;
 

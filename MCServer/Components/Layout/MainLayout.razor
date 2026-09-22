@@ -1,7 +1,9 @@
-﻿@using System.Reflection.Metadata.Ecma335
+﻿@using System.ComponentModel
+@using System.Reflection.Metadata.Ecma335
 @using System.Text.Json
 @using System.Text.Json.Serialization.Metadata
 @inherits LayoutComponentBase
+@implements IDisposable
 @inject ILocalStorageService Storage;
 @inject ISnackbar Snackbar
 @inject NavigationManager Nav
@@ -74,7 +76,7 @@
                     <ChildContent>
                         <MudStack Row Spacing="3" Style="margin-left: -12px; height:24.5px">
                             <MudBadge Origin="Origin.BottomRight" Color="@server.RunningStatus" Dot>
-                                <MudIcon Icon="@Icons.Rounded.Monitor"
+                                <MudIcon Icon="@Icons.Rounded.Dns"
                                          Class="mud-icon-root mud-icon-default mud-icon-size-medium mud-nav-link-icon mud-nav-link-icon-default material-icons-round" />
                             </MudBadge>
                                     
@@ -91,6 +93,7 @@
 
         <MudNavLink Icon="@Icons.Rounded.StickyNote2" Href="/docs/host/notes">How To</MudNavLink>
         <MudNavLink Icon="@Icons.Rounded.EventNote" Href="/docs/host/releases">Release Notes</MudNavLink>
+        <MudNavLink Icon="@Icons.Rounded.Extension" Href="/plugins">Plugins</MudNavLink>
         <MudNavLink Icon="@Icons.Rounded.Settings" Href="/settings">Settings</MudNavLink>
     </MudDrawer>
     <MudMainContent Style="height:100%; display:flex; flex-direction:column;">
@@ -108,6 +111,21 @@
 
 @code {
     private bool _open = true;
+
+    protected override void OnInitialized()
+    {
+        foreach (var server in Servers)
+            server.Settings.PropertyChanged += OnServerSettingsChanged;
+    }
+
+    private void OnServerSettingsChanged(object? sender, PropertyChangedEventArgs e) =>
+        InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        foreach (var server in Servers)
+            server.Settings.PropertyChanged -= OnServerSettingsChanged;
+    }
 
     private void ToggleDrawer()
     {
@@ -141,6 +159,7 @@
                 "schedules" => "Schedule",
                 "notes" => "How To",
                 "releases" => "Release Notes",
+                "plugins" => "Plugins",
                 "settings" => "Settings",
                 _ when Nav.Uri.Contains("servers") => Servers.FindByID(URL)?.Settings.Name ?? "MCServer",
                 _ => "MCServer"

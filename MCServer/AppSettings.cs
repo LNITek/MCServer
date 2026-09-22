@@ -1,3 +1,5 @@
+using MCServer.Plugins;
+
 namespace MCServer;
 
 public class AppSettings

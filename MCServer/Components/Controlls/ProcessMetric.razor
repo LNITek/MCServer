@@ -3,49 +3,15 @@
 @implements IDisposable
 @inject ProcessMetricsService MetricsService
 
-<MudPaper Class="pa-4" Elevation="1" Style="height: 100%;">
+@* Server counterpart to HostMetric: renders one per-process metric
+   (CPU / memory / threads / disk / network) through the shared MetricCard. *@
 
-    <MudStack Spacing="1">
-
-        <MudStack Row="true"
-                  AlignItems="AlignItems.Center"
-                  Justify="Justify.SpaceBetween">
-
-            <MudText Typo="Typo.subtitle2">
-                @Title
-            </MudText>
-
-            <MudText Typo="Typo.h6">
-                @FormattedValue
-            </MudText>
-
-        </MudStack>
-
-        @if (ShowProgress)
-        {
-            <MudProgressLinear
-                Value="@ProgressValue"
-                Rounded="true"
-                Size="Size.Small" />
-        }
-
-    </MudStack>
-
-</MudPaper>
-
-<style>
-    .metric-graph {
-        width: 100%;
-        height: 60px;
-        overflow: hidden;
-        opacity: 0.8;
-    }
-
-    .metric-graph svg {
-        width: 100%;
-        height: 100%;
-    }
-</style>
+<MetricCard Title="@Title"
+            DisplayValue="@FormattedValue"
+            Icon="@ResolveIcon()"
+            AvatarColor="@ResolveColor()"
+            Progress="@ProgressValue"
+            ShowProgress="@ShowProgress" />
 
 @code {
 
@@ -66,6 +32,14 @@
 
     [Parameter]
     public EventCallback<double> ValueChanged { get; set; }
+
+    /// <summary>Overrides the per-metric default icon when set.</summary>
+    [Parameter]
+    public string? Icon { get; set; }
+
+    /// <summary>Overrides the per-metric default color when set.</summary>
+    [Parameter]
+    public Color? AccentColor { get; set; }
 
     private ProcessMetricsSnapshot? _snapshot;
 
@@ -192,54 +166,29 @@
         }
     }
 
-    private string GraphPoints
+    private string ResolveIcon() => Icon ?? Metric switch
     {
-        get
-        {
-            var history =
-                MetricsService.GetHistory(Process);
+        ProcessMetricType.Cpu => Icons.Filled.Speed,
+        ProcessMetricType.Memory => Icons.Filled.Memory,
+        ProcessMetricType.Threads => Icons.Filled.Groups,
+        ProcessMetricType.DiskRead => Icons.Filled.Download,
+        ProcessMetricType.DiskWrite => Icons.Filled.Upload,
+        ProcessMetricType.NetworkReceive => Icons.Filled.ArrowDownward,
+        ProcessMetricType.NetworkSend => Icons.Filled.ArrowUpward,
+        _ => Icons.Filled.Computer,
+    };
 
-            if (history.Count < 2)
-                return string.Empty;
-
-            var values =
-                history
-                    .Select(GetMetricValue)
-                    .ToArray();
-
-            var min = values.Min();
-            var max = values.Max();
-
-            if (Math.Abs(max - min) < 0.001)
-            {
-                min -= 1;
-                max += 1;
-            }
-
-            var points =
-                new List<string>(values.Length);
-
-            for (var i = 0; i < values.Length; i++)
-            {
-                var x =
-                    i /
-                    (double)(values.Length - 1) *
-                    400;
-
-                var normalized =
-                    (values[i] - min) /
-                    (max - min);
-
-                var y =
-                    95 - normalized * 90;
-
-                points.Add(
-                    $"{x:0.##},{y:0.##}");
-            }
-
-            return string.Join(' ', points);
-        }
-    }
+    private Color ResolveColor() => AccentColor ?? Metric switch
+    {
+        ProcessMetricType.Cpu => Color.Primary,
+        ProcessMetricType.Memory => Color.Secondary,
+        ProcessMetricType.Threads => Color.Tertiary,
+        ProcessMetricType.DiskRead => Color.Info,
+        ProcessMetricType.DiskWrite => Color.Info,
+        ProcessMetricType.NetworkReceive => Color.Success,
+        ProcessMetricType.NetworkSend => Color.Warning,
+        _ => Color.Primary,
+    };
 
     private static string FormatBytes(long bytes)
     {

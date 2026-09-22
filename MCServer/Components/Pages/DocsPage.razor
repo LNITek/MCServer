@@ -2,7 +2,7 @@
 @inject NavigationManager Nav
 @inject GameServers GameServers
 
-<PageTitle>MCServer - Documentation</PageTitle>
+<PageTitle>MCServer - Documentation@(string.IsNullOrEmpty(_title) ? "" : $" - {_title}")</PageTitle>
 
 <style>
     blockquote, pre {
@@ -14,33 +14,63 @@
     }
 </style>
 
-<div style="flex-grow:1; margin:16px 0px; overflow:auto;">
-    @HTMLContent
-</div>
+@if (_server is not null && string.IsNullOrEmpty(type))
+{
+    <MudStack Spacing="2">
+        <MudText Typo="Typo.h6">@_server.Settings.Name - Documentation</MudText>
+        @foreach (var doc in _server.DocFiles)
+        {
+            <MudLink Href="@($"/docs/{_server.Settings.ID}/{doc.Slug}")">@doc.Title</MudLink>
+        }
+    </MudStack>
+}
+else
+{
+    <div style="flex-grow:1; margin:16px 0px; overflow:auto;">
+        @HTMLContent
+    </div>
+}
 
 @code {
     private MarkupString HTMLContent;
+    private string _title = "";
 
     [Parameter] public string type { get; set; } = "";
     [Parameter] public string serverId { get; set; } = "host";
-    public IGameServer? Server { get; set; }
+    private IGameServer? _server { get; set; }
 
-    protected override Task OnAfterRenderAsync(bool firstRender)
+    protected override void OnParametersSet()
     {
-        Server = GameServers.FindByID(serverId);
+        _server = GameServers.FindByID(serverId);
 
-        string html = DocsService.Docs404;
-        switch (type)
+        string html;
+        if (_server is null)
         {
-            case "notes" when Server is null: html = DocsService.GetReadMe(); break;
-            case "releases" when Server is null: html = DocsService.GetReleaseNotes(); break;
-            case "notes": html = Server.GetReadMe(); break;
-            case "releases": html = Server.GetReleaseNotes(); break;
+            html = type switch
+            {
+                "notes" => DocsService.GetReadMe(),
+                "releases" => DocsService.GetReleaseNotes(),
+                _ => DocsService.Docs404,
+            };
+            _title = type switch
+            {
+                "notes" => "How To",
+                "releases" => "Release Notes",
+                _ => "",
+            };
+        }
+        else if (string.IsNullOrEmpty(type))
+        {
+            html = "";
+            _title = _server.Settings.Name;
+        }
+        else
+        {
+            html = _server.GetServerDoc(type);
+            _title = _server.DocFiles.FirstOrDefault(d =>
+                d.Slug.Equals(type, StringComparison.OrdinalIgnoreCase))?.Title ?? "";
         }
 
         HTMLContent = new(html);
-        StateHasChanged();
-
-        return base.OnAfterRenderAsync(firstRender);
     }
 }

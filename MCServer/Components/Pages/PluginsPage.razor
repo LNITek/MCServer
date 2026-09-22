@@ -1,0 +1,77 @@
+@page "/plugins"
+@using MCServer.Plugins
+@inject PluginService Plugins
+@inject ISnackbar Snackbar
+
+<PageTitle>MCServer - Plugins</PageTitle>
+
+<MudStack Spacing="4">
+    <MudText Typo="Typo.h6">Server Plugins</MudText>
+
+    @if (Plugins.RestartRequired)
+    {
+        <MudAlert Severity="Severity.Warning">A newly installed plugin is waiting. Restart the app to load it.</MudAlert>
+    }
+
+    <MudTable Items="@Plugins.ServerPlugins" Dense="true" Hover="true">
+        <HeaderContent>
+            <MudTh>Name</MudTh>
+            <MudTh>Server Type</MudTh>
+            <MudTh>Author</MudTh>
+            <MudTh>Version</MudTh>
+            <MudTh>Pages</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Name">@context.DisplayName</MudTd>
+            <MudTd DataLabel="Server Type">
+                <MudStack Row="true" Spacing="1">
+                    <MudChip T="string" Size="Size.Small">@context.ServerType</MudChip>
+                    @foreach (var alias in context.Aliases)
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@alias</MudChip>
+                    }
+                </MudStack>
+            </MudTd>
+            <MudTd DataLabel="Author">@context.Author</MudTd>
+            <MudTd DataLabel="Version">@context.Version</MudTd>
+            <MudTd DataLabel="Pages">
+                @if (context is IServerPagesProvider pages)
+                {
+                    @string.Join(", ", pages.GetPages().Select(p => p.Title))
+                }
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+
+    <MudText Typo="Typo.h6">Install Plugin</MudText>
+    <MudText Typo="Typo.body2" Color="Color.Secondary">
+        Upload a plugin <c>.dll</c> or a <c>.zip</c> package. Plugins load on restart (restart-to-load).
+        Files are stored in <c>@Plugins.PluginsPath</c>.
+    </MudText>
+
+    <MudFileUpload T="IBrowserFile" FilesChanged="InstallPlugin" Accept=".dll,.zip" MaximumFileCount="1">
+        <ActivatorContent>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Rounded.Upload">Upload Plugin</MudButton>
+        </ActivatorContent>
+    </MudFileUpload>
+</MudStack>
+
+@code {
+    private async Task InstallPlugin(IBrowserFile? file)
+    {
+        if (file is null) return;
+
+        try
+        {
+            await using var stream = file.OpenReadStream(maxAllowedSize: 100 * 1024 * 1024);
+            var message = await Plugins.InstallAsync(stream, file.Name);
+            Snackbar.Add(message, Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Install failed: {ex.Message}", Severity.Error);
+        }
+
+        StateHasChanged();
+    }
+}

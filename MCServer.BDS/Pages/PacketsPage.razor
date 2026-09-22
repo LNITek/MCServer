@@ -1,7 +1,6 @@
-﻿@page "/servers/{serverId}/packets"
+@using MCServer.BDS.Services
+@using MCServer.Plugins
 @implements IDisposable
-@inject NavigationManager Nav
-@inject GameServers GameServers
 
 <PageTitle>MCServer - Packet Rate Limits</PageTitle>
 
@@ -53,8 +52,6 @@
     <MudDivider Vertical Class="mx-4" />
 
     <MudStack Style="flex-grow:1; overflow:auto;">
-        @* <MudAlert Variant="Variant.Text" Severity="Severity.Warning">These changes is only in an effect after a restart!</MudAlert> *@
-
         @if (SelectedLimit is not null)
         {
             <MudStack Spacing="1" Row>
@@ -90,47 +87,37 @@
 </div>
 
 @code {
-    public PacketConfig Config;
+    [Parameter, EditorRequired]
+    public IGameServer Server { get; set; } = null!;
+
+    private BedrockServer Bedrock => (BedrockServer)Server;
+
+    public PacketConfig Config = new();
     public ExList<PacketConfig.Limit> Limits = new([]);
     public string SearchText { get; set; } = string.Empty;
     public PacketConfig.Limit? SelectedLimit = default;
 
-    [Parameter] public string serverId { get; set; } = "";
-    public MCBedrockServer Server { get; set; }
-    
-    protected override void OnAfterRender(bool firstRender)
+    protected override void OnInitialized()
     {
-        if (firstRender)
-        {
-            if (GameServers.FindByID(serverId) is not MCBedrockServer server)
-            {
-                Nav.NavigateTo("\\not-found");
-                return;
-            }
+        Config = Bedrock.GetPacketConfig();
+        Limits = new(Config.limitGroups);
+        SelectedLimit = Config.DefaultLimit;
 
-            Server = server;
-            Config = Server.GetPacketConfig();
-            Limits = new(Config.limitGroups);
-            SelectedLimit = Config.DefaultLimit;
-            
-            Limits.SetFilter(filter =>
-            {
-                if (string.IsNullOrWhiteSpace(SearchText) || !uint.TryParse(SearchText, out var SearchID)) return true;
-                return filter.minecraftPacketIds.Contains(SearchID);
-            });
-            
-            StateHasChanged();
-        }
+        Limits.SetFilter(filter =>
+        {
+            if (string.IsNullOrWhiteSpace(SearchText) || !uint.TryParse(SearchText, out var SearchID)) return true;
+            return filter.minecraftPacketIds.Contains(SearchID);
+        });
     }
 
     public void Dispose()
     {
         Save();
     }
-    
+
     private void Save()
     {
-        Server.SetPacketConfig(Config);
+        Bedrock.SetPacketConfig(Config);
     }
 
     private void SelectDefault_Click()

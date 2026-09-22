@@ -6,4 +6,6 @@
     <File Path="README.md" />
   </Folder>
   <Project Path="MCServer/MCServer.csproj" />
+  <Project Path="MCServer.Plugin/MCServer.Plugin.csproj" />
+  <Project Path="MCServer.BDS/MCServer.BDS.csproj" />
 </Solution>

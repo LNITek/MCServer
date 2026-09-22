@@ -1,0 +1,36 @@
+<MudDialog>
+    <DialogContent>
+        <MudStack>
+            @Message
+            
+            @if (!string.IsNullOrWhiteSpace(ValidateKey))
+            {
+                <MudText>
+                    Type <b>@ValidateKey</b> to confirm.
+                </MudText>
+                <MudTextField @bind-Value="Value"
+                    Label="Value"
+                    Variant="Variant.Outlined"
+                    AutoFocus="true"
+                    Immediate="true" />
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@(!string.IsNullOrWhiteSpace(ValidateKey) && Value != ValidateKey)">Accept</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; }
+
+    [Parameter] public string Message { get; set; } = "";
+    [Parameter] public string ValidateKey { get; set; } = "";
+    public string? Value { get; set; }
+
+    private void Submit() => MudDialog.Close(DialogResult.Ok(true));
+
+    private void Cancel() => MudDialog.Cancel();
+}

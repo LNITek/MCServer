@@ -1,5 +1,7 @@
 ﻿@page "/servers/{serverId}/console"
 @using MCServer.Components.Dialogs
+@using MCServer.Plugins
+@implements IDisposable
 @inject NavigationManager Nav
 @inject GameServers GameServers
 @inject IDialogService Dialog
@@ -17,23 +19,18 @@
             </MudPaper>
         </div>
     </MudOverlay>
-    
-    <MudStack Spacing="6" Row="true">
-        <MudButtonGroup Color="Color.Primary" Variant="Variant.Outlined">
-            <MudButton StartIcon="@Icons.Rounded.PlayArrow" OnClick="@StartServer_Click" Disabled="@Server.ServerRunningStatus">Start</MudButton>
-            <MudButton StartIcon="@Icons.Rounded.Replay" OnClick="@RestartServer_Click" Disabled="@Server.ServerExitedStatus">Restart</MudButton>
-            <MudButton StartIcon="@Icons.Rounded.Stop" OnClick="@StopServer_Click" Disabled="@Server.ServerExitedStatus">Stop</MudButton>
-            @* <MudButton StartIcon="@Icons.Rounded.ExitToApp" OnClick="ExitServer_Click" Disabled="@(Server.CommandRunning)">Exit</MudButton>
-        <MudButton StartIcon="@Icons.Rounded.PowerSettingsNew" OnClick="PowerServer_Click" Disabled="@(Server.CommandRunning)">Power</MudButton> *@
-        </MudButtonGroup>
 
-        <MudDivider Vertical="true" FlexItem="true"/>
-
-        <MudButtonGroup Color="Color.Primary" Variant="Variant.Outlined">
-            <MudButton StartIcon="@Icons.Rounded.Backup" OnClick="BackupServer_Click" Disabled="@Server.CommandRunning">Backup</MudButton>
-            <MudButton StartIcon="@Icons.Rounded.Update" OnClick="UpdateServer_Click" Disabled="@Server.CommandRunning">Update</MudButton>
-        </MudButtonGroup>
-    </MudStack>
+    <MudHidden Breakpoint="Breakpoint.LgAndUp" Invert="true">
+        <MudStack Spacing="3" Row="true" Wrap="Wrap.Wrap">
+            <CommandButtons Commands="@Server.Commands" OnExecute="@RunDisplayCommand" />
+        </MudStack>
+    </MudHidden>
+    <MudHidden Breakpoint="Breakpoint.MdAndDown" Invert="true">
+        <MudMenu Label="Commands" Color="Color.Primary" EndIcon="@Icons.Filled.ArrowDropDown" Variant="Variant.Outlined"
+                 AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+            <CommandMenu Commands="@Server.Commands" OnExecute="@RunDisplayCommand" />
+        </MudMenu>
+    </MudHidden>
 
     <div @ref="consoleDiv" style="flex-grow:1; margin:16px 0px; overflow:auto;">
         <MudStack Spacing="2">
@@ -56,75 +53,61 @@
 
 @code {
     [Parameter] public string serverId { get; set; } = "";
-    public MCBedrockServer Server { get; set; }
+    public IGameServer Server { get; set; } = null!;
     private ElementReference consoleDiv;
     private string ConsoleCommand { get; set; } = "";
+
+    private System.Collections.Specialized.NotifyCollectionChangedEventHandler? _outputHandler;
+    private System.ComponentModel.PropertyChangedEventHandler? _propertyHandler;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            if (GameServers.FindByID(serverId) is not MCBedrockServer server)
+            var server = GameServers.FindByID(serverId);
+            if (server is null)
             {
                 Nav.NavigateTo("\\not-found");
                 return;
             }
 
             Server = server;
-            Server.OutputList.CollectionChanged += async (s, e) =>
+
+            _outputHandler = async (s, e) =>
             {
                 await InvokeAsync(StateHasChanged);
                 await JS.InvokeVoidAsync("scrollToBottom", consoleDiv, 50);
             };
-            Server.PropertyChanged+= async (s, e) =>
+            _propertyHandler = async (s, e) =>
             {
-                /*if (e.PropertyName == nameof(Server.Progress))
-                {
-                    if (Server.Progress == null)
-                        Dialog.ShowAsync<ProgressDialog>("Update Progress", new DialogOptions()
-                        {
-                            MaxWidth = MaxWidth.Medium,
-                            FullWidth = true,
-                            BackdropClick = false,
-                            Position = DialogPosition.TopCenter
-                        });
-                }*/
-                    
                 await InvokeAsync(StateHasChanged);
             };
-            
+            Server.OutputList.CollectionChanged += _outputHandler;
+            Server.PropertyChanged += _propertyHandler;
+
             StateHasChanged();
         }
         await JS.InvokeVoidAsync("scrollToBottom", consoleDiv, 0);
+    }
+
+    public void Dispose()
+    {
+        if (Server is not null)
+        {
+            if (_outputHandler is not null)
+                Server.OutputList.CollectionChanged -= _outputHandler;
+            if (_propertyHandler is not null)
+                Server.PropertyChanged -= _propertyHandler;
+        }
     }
 
     private void RunCommand(string command)
     {
         Server.RunCommand(command);
     }
-    
-    private void StartServer_Click()
-    {
-        Server.StartServer();
-    }
 
-    private void RestartServer_Click()
+    private void RunDisplayCommand(ServerCommand command)
     {
-        Server.RestartServer(new(0, 0, 10));
-    }
-
-    private void StopServer_Click()
-    {
-        Server.StopServer(new(0, 0, 10));
-    }
-
-    private void BackupServer_Click()
-    {
-        Server.BackupServer();
-    }
-
-    private void UpdateServer_Click()
-    {
-        Server.UpdateServer();
+        Server.RunCommand(command.Name);
     }
 }

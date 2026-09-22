@@ -1,0 +1,17 @@
+@* Centered loading indicator for pages waiting on data (e.g. server lookup). *@
+
+<div style="height:100%; display:flex; align-items:center; justify-content:center;">
+    <MudStack AlignItems="AlignItems.Center" Spacing="3">
+        <MudProgressCircular Indeterminate="true" Size="@Size" Color="@Color" />
+        @if (!string.IsNullOrEmpty(Text))
+        {
+            <MudText Typo="Typo.body1" Color="Color.Secondary">@Text</MudText>
+        }
+    </MudStack>
+</div>
+
+@code {
+    [Parameter] public string? Text { get; set; } = "Loading...";
+    [Parameter] public Size Size { get; set; } = Size.Large;
+    [Parameter] public Color Color { get; set; } = Color.Primary;
+}

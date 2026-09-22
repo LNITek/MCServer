@@ -1,0 +1,166 @@
+
+<style>
+    .mud-grid-item {
+        margin: 0;
+        box-sizing: border-box;
+        align-content: center;
+    }
+</style>
+
+<MudGrid Spacing="3" Class="pa-4">
+    <MudItem sm="7" md="8">
+        <MudStack Row AlignItems="AlignItems.Center">
+            <MudAvatar Color="@(IsSelected ? Color.Primary : Color.Default)"
+                       Variant="Variant.Filled"
+                       Style="cursor:pointer"
+                       @onclick="ToggleSelectionAsync">
+                <MudIcon Icon="@(IsSelected ? Icons.Filled.Check : Icons.Filled.Dns)"/>
+            </MudAvatar>
+
+            <div style="min-width:0">
+                <MudText Typo="Typo.h6">@Server.Settings.Name</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    @Server.Settings.Type | @Server.Settings.Version
+                </MudText>
+
+                @if (Server.ServerRunning)
+                {
+                    <MudText Typo="Typo.body2">Players: @Server.PlayerCount</MudText>
+                    @if (Server.StartupDate is not null)
+                    {
+                        <TimerLable StartedTime="@Server.StartupDate" Label="Uptime: "/>
+                    }
+                }
+            </div>
+        </MudStack>
+    </MudItem>
+    
+    <MudItem xs="5" sm="2" Style="justify-content: end; display: grid;">
+        <MudChip T="string"
+                 Icon="@(Server.ServerRunning ? Icons.Filled.PlayArrow : Icons.Filled.Stop)"
+                 Color="@Server.ServerStatus.Indicator"
+                 Variant="Variant.Filled"
+                 OnClick="ToggleServerAsync">
+            @Server.ServerStatus.Status
+        </MudChip>
+    </MudItem>
+    
+    <MudItem xs="12" sm="3" md="2">
+        <MudButtonGroup Variant="Variant.Filled" FullWidth>
+            <MudButton OnClick="HandleManageAsync" FullWidth>Manage</MudButton>
+            <MudMenu Icon="@Icons.Filled.ArrowDropDown">
+                <MudMenuItem Icon="@Icons.Filled.PlayArrow" Disabled="@Server.ServerRunning" OnClick="HandleStartAsync">
+                    Start
+                </MudMenuItem>
+                <MudMenuItem Icon="@Icons.Filled.Stop" Disabled="@(!Server.ServerRunning)" OnClick="HandleStopAsync">
+                    Stop
+                </MudMenuItem>
+                <MudMenuItem Icon="@Icons.Filled.RestartAlt" Disabled="@(!Server.ServerRunning)" OnClick="HandleRestartAsync">
+                    Restart
+                </MudMenuItem>
+            </MudMenu>
+        </MudButtonGroup>
+    </MudItem>
+</MudGrid>
+
+@* <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3" Class="pa-4" Wrap="Wrap.Wrap"> *@
+@*     <MudSpacer /> *@
+@* *@
+@* </MudStack> *@
+
+@code {
+    [Parameter, EditorRequired]
+    public IGameServer Server { get; set; } = default!;
+
+    [Parameter]
+    public bool IsSelected { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> IsSelectedChanged { get; set; }
+
+    [Parameter]
+    public EventCallback OnStart { get; set; }
+
+    [Parameter]
+    public EventCallback OnStop { get; set; }
+
+    [Parameter]
+    public EventCallback OnRestart { get; set; }
+
+    [Parameter]
+    public EventCallback OnManage { get; set; }
+
+    [Inject]
+    private ISnackbar Snackbar { get; set; } = default!;
+
+    private Task ToggleSelectionAsync() => IsSelectedChanged.InvokeAsync(!IsSelected);
+
+    private Task ToggleServerAsync() =>
+        Server.ServerRunning ? HandleStopAsync() : HandleStartAsync();
+
+    private async Task HandleStartAsync()
+    {
+        if (OnStart.HasDelegate)
+        {
+            await OnStart.InvokeAsync();
+            return;
+        }
+
+        try
+        {
+            if (!Server.ServerRunning)
+                Server.StartServer();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to start '{Server.Settings.Name}': {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task HandleStopAsync()
+    {
+        if (OnStop.HasDelegate)
+        {
+            await OnStop.InvokeAsync();
+            return;
+        }
+
+        try
+        {
+            if (Server.ServerRunning)
+                Server.StopServer(TimeSpan.FromSeconds(10));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to stop '{Server.Settings.Name}': {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task HandleRestartAsync()
+    {
+        if (OnRestart.HasDelegate)
+        {
+            await OnRestart.InvokeAsync();
+            return;
+        }
+
+        try
+        {
+            if (Server.ServerRunning)
+                Server.RestartServer(TimeSpan.FromSeconds(10));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to restart '{Server.Settings.Name}': {ex.Message}", Severity.Error);
+        }
+    }
+
+    private Task HandleManageAsync() => OnManage.InvokeAsync();
+
+    private static string FormatMemory(long megabytes)
+    {
+        if (megabytes >= 1024)
+            return $"{megabytes / 1024.0:0.0} GB";
+        return $"{megabytes} MB";
+    }
+}

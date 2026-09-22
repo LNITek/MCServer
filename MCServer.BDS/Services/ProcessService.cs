@@ -1,21 +1,17 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Text;
-using ExtraFunctions.Extras;
-using MCServer.Components;
-using MCServer.Helpers;
-using MCServer.Server;
-using Microsoft.AspNetCore.Components;
+using MCServer.Plugins;
 using MudBlazor;
 
-namespace MCServer.Services;
+namespace MCServer.BDS.Services;
 
-public static class ProcessService
+public static class BedrockProcessService
 {
     public static void CreateThread(Action action) =>
         new Thread(new ThreadStart(action)).Start();
 
     #region Start
-    public static void StartServer(this MCBedrockServer server)
+    public static void StartServer(this BedrockServer server)
     {
         if ((server.ServerThread?.ThreadState ?? System.Threading.ThreadState.Stopped) != System.Threading.ThreadState.Running)
         {
@@ -23,16 +19,16 @@ public static class ProcessService
             server.ServerThread.Start();
         }
     }
-    
-    private static void Start(this MCBedrockServer server)
+
+    private static void Start(this BedrockServer server)
     {
         MaintenanceService.UpdateTask(server);
-        
+
         server.StartupDate = DateTime.Today;
         if (server.CommandRunning) return;
         if (server.ServerRunning)
         {
-            Program.NotifyUser("Start: Server is already running!", Severity.Error);
+            server.Host.NotifyUser("Start: Server is already running!", Severity.Error);
             return;
         }
 
@@ -45,10 +41,10 @@ public static class ProcessService
         server.ServerProcess.StartInfo.RedirectStandardInput = true;
         server.ServerProcess.StartInfo.RedirectStandardOutput = true;
         server.ServerProcess.StartInfo.RedirectStandardError = true;
-        var exe =  Path.Combine(server.ServerPath);
+        var exe = Path.Combine(server.ServerPath);
         server.ServerProcess.StartInfo.WorkingDirectory = exe;
-        server.ServerProcess.StartInfo.FileName = Path.Combine(exe, "bedrock_server" + (Program.IsWin ? ".exe" : ""));
-        if (!Program.IsWin)
+        server.ServerProcess.StartInfo.FileName = Path.Combine(exe, "bedrock_server" + (server.Host.IsWindows ? ".exe" : ""));
+        if (!server.Host.IsWindows)
             server.ServerProcess.StartInfo.EnvironmentVariables["LD_LIBRARY_PATH"] = ".";
         server.ServerProcess.StartInfo.StandardInputEncoding = Encoding.Latin1;
         server.ServerProcess.StartInfo.StandardOutputEncoding = Encoding.Latin1;
@@ -67,26 +63,25 @@ public static class ProcessService
         server.ServerProcess.OutputDataReceived -= server.WriteProcessOut;
         server.ServerProcess.ErrorDataReceived -= server.WriteProcessError;
         server.ServerProcess.Close();
-        
+
         server.WriteProcessExit(server.ServerProcess, new());
-        
+
         server.ServerRunning = false;
         server.CommandRunning = false;
-        //server.OutputList.Clear();
     }
 
-    public static void RestartServer(this MCBedrockServer server, TimeSpan Delay)
+    public static void RestartServer(this BedrockServer server, TimeSpan Delay)
     {
         if (!server.ServerRunning)
         {
-            Program.NotifyUser("Restart: Server is not running!", Severity.Error);
+            server.Host.NotifyUser("Restart: Server is not running!", Severity.Error);
             return;
         }
 
-        CreateThread(async () => await RestartTask(server,Delay));
+        CreateThread(async () => await RestartTask(server, Delay));
     }
 
-    internal static async Task RestartTask(MCBedrockServer server, TimeSpan Delay)
+    internal static async Task RestartTask(BedrockServer server, TimeSpan Delay)
     {
         server.CommandRunning = true;
         server.CommandQue.WaitOne();
@@ -100,30 +95,30 @@ public static class ProcessService
     #endregion
 
     #region Stop
-    public static void StopServer(this MCBedrockServer server, TimeSpan Delay)
+    public static void StopServer(this BedrockServer server, TimeSpan Delay)
     {
         if (!server.ServerRunning)
         {
-            Program.NotifyUser("Stop: Server is not running!", Severity.Error);
+            server.Host.NotifyUser("Stop: Server is not running!", Severity.Error);
             return;
         }
 
         CreateThread(async () => await StopTask(server, Delay));
     }
 
-    internal static async Task StopTask(MCBedrockServer server, TimeSpan Delay)
+    internal static async Task StopTask(BedrockServer server, TimeSpan Delay)
     {
         server.CommandRunning = true;
         server.CommandQue.WaitOne();
 
         var res = await Stop(server, "Stopping Server!", Delay);
-        if (!res) Program.NotifyUser("Stop: Server could not be stopped!", Severity.Error);
+        if (!res) server.Host.NotifyUser("Stop: Server could not be stopped!", Severity.Error);
 
         server.CommandQue.Release();
         server.CommandRunning = false;
     }
 
-    public static async Task<bool> Stop(this MCBedrockServer server, string Message, TimeSpan Delay)
+    public static async Task<bool> Stop(this BedrockServer server, string Message, TimeSpan Delay)
     {
         TimeSpan iWait = new(0, 1, 0);
         string Colour = "§6";
@@ -155,7 +150,6 @@ public static class ProcessService
         if (server.ServerRunning)
         {
             server.WriteLine($"say §cError Could Not Stop Server...");
-            //OtherController.ThrowLog("'BC-S01' | Could Not Stop Process");
             return false;
         }
 

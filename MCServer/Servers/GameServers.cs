@@ -1,43 +1,60 @@
-using MCServer.Helpers;
-using MudBlazor;
+using MCServer.Plugins;
 
 namespace MCServer.Server;
 
+/// <summary>
+/// Registry of running servers. Server instances are created through
+/// registered <see cref="IGameServerPlugin"/> factories keyed by
+/// <see cref="ServerSettings.Type"/> (plus plugin aliases).
+/// </summary>
 public class GameServers : List<IGameServer>, IDisposable
 {
     private readonly Lock _lock = new();
+    private readonly Dictionary<string, IGameServerPlugin> _factories = new(StringComparer.OrdinalIgnoreCase);
 
-    public void Register(IEnumerable<ServerSettings> settings)
+    public IEnumerable<IGameServerPlugin> Plugins
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return [.. _factories.Values.Distinct()];
+            }
+        }
+    }
+
+    public void RegisterPlugin(IGameServerPlugin plugin)
+    {
+        lock (_lock)
+        {
+            _factories[plugin.ServerType] = plugin;
+            foreach (var alias in plugin.Aliases)
+                _factories.TryAdd(alias, plugin);
+        }
+    }
+
+    public void Register(IEnumerable<ServerSettings> settings, IServerHost host)
     {
         lock (_lock)
         {
             foreach (var setting in settings)
-                RegisterLocked(setting);
+                RegisterLocked(setting, host);
         }
     }
 
-    public void Register(ServerSettings setting)
+    public void Register(ServerSettings setting, IServerHost host)
     {
         lock (_lock)
         {
-            RegisterLocked(setting);
+            RegisterLocked(setting, host);
         }
     }
 
-    private void RegisterLocked(ServerSettings setting)
+    private void RegisterLocked(ServerSettings setting, IServerHost host)
     {
-        if (FindGameServer(setting) is { } s)
-            this.Add(s);
-    }
-
-    private IGameServer? FindGameServer(ServerSettings setting)
-    {
-        if (FindByID(setting.ID) is not null) return null;
-        return setting.Type switch
-        {
-            nameof(MCBedrockServer) => new MCBedrockServer(setting),
-            _ => null //throw new ArgumentOutOfRangeException(nameof(setting), setting, "Game server not supported."),
-        };
+        if (FindByID(setting.ID) is not null) return;
+        if (!_factories.TryGetValue(setting.Type, out var plugin)) return;
+        Add(plugin.Create(setting, host));
     }
 
     public IGameServer? FindByID(string id)
@@ -49,21 +66,24 @@ public class GameServers : List<IGameServer>, IDisposable
         return this.Find(x => x.Settings.Name == name);
     }
 
+    /// <summary>
+    /// Releases schedule timers, disposes the server and removes it from
+    /// the registry. Returns false when no server with that ID was registered.
+    /// </summary>
+    public bool Unregister(IGameServer server)
+    {
+        lock (_lock)
+        {
+            var existing = FindByID(server.Settings.ID);
+            if (existing is null) return false;
+            existing.RemoveSchedules(existing.ServerSchedules);
+            try { existing.Dispose(); } catch { }
+            return Remove(existing);
+        }
+    }
+
     public void Dispose()
     {
         this.ForEach(server => server.Dispose());
     }
-}
-
-public interface IGameServer
-{
-    ServerSettings Settings { get; }
-    bool ServerRunning { get; set; }
-    bool CommandRunning { get; set; }
-    bool ServerRunningStatus  { get; }
-    bool ServerExitedStatus  { get; }
-    Color RunningStatus { get; }
-    StackList OutputList { get; set; }
-    
-    void Dispose();
 }

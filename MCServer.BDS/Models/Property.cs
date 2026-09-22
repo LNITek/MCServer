@@ -1,9 +1,7 @@
-﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
 using ExtraFunctions.ExGenerators;
-using ExtraFunctions.Extras;
 
-namespace MCServer.Helpers;
+namespace MCServer.BDS;
 
 public enum PropertyEditMode
 {
@@ -27,7 +25,7 @@ public partial class Property : INotifyPropertyChanged
     public string Desc
     {
         get => string.Join("\n", Comments);
-        set => Comments = [..value.Split("\n")];
+        set => Comments = [.. value.Split("\n")];
     }
 
     public string ShortDesc

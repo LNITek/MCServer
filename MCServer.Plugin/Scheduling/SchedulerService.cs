@@ -1,39 +1,43 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using Cronos;
-using MCServer.Helpers;
-using MCServer.Server;
 
-namespace MCServer.Services;
+namespace MCServer.Plugins;
 
+/// <summary>
+/// Core schedule persistence + timers. Works against <see cref="IGameServer"/>
+/// so every server plugin shares the same schedule system.
+/// </summary>
 public static class SchedulerService
 {
     private static readonly Dictionary<string, Timer> GlobalTimers = [];
 
-    public static List<Schedule> GetSchedules(this MCBedrockServer server)
+    public static string SchedulesPath(this IGameServer server) =>
+        Path.Combine(server.ServerPath, "schedules.json");
+
+    public static List<Schedule> GetSchedules(this IGameServer server)
     {
-        if (!File.Exists(server.ServerPath + "/schedules.json"))
+        if (!File.Exists(server.SchedulesPath()))
             return [];
-        //Program.NotifyUser("Server Schedules: could not find server schedules file!", MudBlazor.Severity.Error);
 
         var Schedules = JsonSerializer.Deserialize<Schedule[]>
-            (File.Open(server.ServerPath + "/schedules.json", FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
+            (File.Open(server.SchedulesPath(), FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
 
         return [.. Schedules ?? []];
     }
 
-    public static void SetSchedules(this MCBedrockServer server, IEnumerable<Schedule> schedules)
+    public static void SetSchedules(this IGameServer server, IEnumerable<Schedule> schedules)
     {
         var json = JsonSerializer.Serialize(schedules);
-        File.WriteAllText(server.ServerPath + "/schedules.json",json);
+        File.WriteAllText(server.SchedulesPath(), json);
     }
-    
-    public static void AddSchedules(this MCBedrockServer server, IEnumerable<Schedule> schedules)
+
+    public static void AddSchedules(this IGameServer server, IEnumerable<Schedule> schedules)
     {
         foreach (var item in schedules)
             AddSchedule(server, item);
     }
 
-    public static void AddSchedule(this MCBedrockServer server, Schedule Schedule)
+    public static void AddSchedule(this IGameServer server, Schedule Schedule)
     {
         if (!Schedule.Enabled) return;
 
@@ -44,7 +48,7 @@ public static class SchedulerService
         Timer GTimer = null!;
         GTimer = new Timer(args =>
         {
-            if(args is not (Timer timer, MCBedrockServer server, Schedule schedule))
+            if (args is not (Timer timer, IGameServer server, Schedule schedule))
             {
                 try
                 {
@@ -60,7 +64,7 @@ public static class SchedulerService
 
             TimeSpan? delay = CalculateDelay(schedule);
             if (delay is null)
-                stop(); 
+                stop();
             else
                 timer.Change(delay ?? new(), Timeout.InfiniteTimeSpan);
 
@@ -76,13 +80,13 @@ public static class SchedulerService
         GlobalTimers.Add(Schedule.ID, GTimer);
     }
 
-    public static void RemoveSchedules(this MCBedrockServer server, IEnumerable<Schedule> schedules)
+    public static void RemoveSchedules(this IGameServer server, IEnumerable<Schedule> schedules)
     {
         foreach (var item in schedules)
             RemoveSchedule(server, item);
     }
 
-    public static void RemoveSchedule(this MCBedrockServer server, Schedule Schedule)
+    public static void RemoveSchedule(this IGameServer server, Schedule Schedule)
     {
         if (GlobalTimers.TryGetValue(Schedule.ID, out var timer))
         {

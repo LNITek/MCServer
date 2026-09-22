@@ -1,8 +1,7 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using MudBlazor;
-using static MudBlazor.CategoryTypes;
 
-namespace MCServer.Helpers;
+namespace MCServer.Plugins;
 
 public class StackList : ObservableCollection<ConsoleLine>
 {
@@ -45,7 +44,7 @@ public class StackList : ObservableCollection<ConsoleLine>
     {
         lock (Lock)
         {
-            return [..this];
+            return [.. this];
         }
     }
 
@@ -84,20 +83,20 @@ public class ConsoleLine(DateTime dateTime, ConsoleLineType type, string msg)
     public bool IncludeInfoStamp { get; set; } = true;
 
     public Color Colour => Type switch
-        {
-            ConsoleLineType.Status => Color.Default,
-            ConsoleLineType.Info => Color.Info,
-            ConsoleLineType.Success => Color.Success,
-            ConsoleLineType.Warning => Color.Warning,
-            ConsoleLineType.Error => Color.Error,
-            _ => Color.Default,
-        };
+    {
+        ConsoleLineType.Status => Color.Default,
+        ConsoleLineType.Info => Color.Info,
+        ConsoleLineType.Success => Color.Success,
+        ConsoleLineType.Warning => Color.Warning,
+        ConsoleLineType.Error => Color.Error,
+        _ => Color.Default,
+    };
 
     public string TypeString => Type switch
-        {
-            ConsoleLineType.Status => nameof(ConsoleLineType.Info),
-            _ => Type.ToString(),
-        };
+    {
+        ConsoleLineType.Status => nameof(ConsoleLineType.Info),
+        _ => Type.ToString(),
+    };
 
     public override string ToString()
     {

@@ -128,13 +128,14 @@
     public Schedule? SelectedSchedule = default;
 
     [Parameter] public string serverId { get; set; } = "";
-    public MCBedrockServer Server { get; set; }
+    public IGameServer Server { get; set; } = null!;
     
     protected override void OnAfterRender(bool firstRender)
     {
         if (firstRender)
         {
-            if (GameServers.FindByID(serverId) is not MCBedrockServer server)
+            var server = GameServers.FindByID(serverId);
+            if (server is null)
             {
                 Nav.NavigateTo("\\not-found");
                 return;

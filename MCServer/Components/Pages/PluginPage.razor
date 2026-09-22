@@ -1,0 +1,43 @@
+@page "/servers/{serverId}/p/{slug}"
+@using MCServer.Plugins
+@inject NavigationManager Nav
+@inject GameServers GameServers
+@inject PluginService Plugins
+
+<PageTitle>MCServer - @_page?.Title</PageTitle>
+
+@if (_server is not null && _page is not null)
+{
+    <DynamicComponent Type="@_page.ComponentType" Parameters="@_parameters" />
+}
+
+@code {
+    [Parameter] public string serverId { get; set; } = "";
+    [Parameter] public string slug { get; set; } = "";
+
+    private IGameServer? _server;
+    private ServerPageDefinition? _page;
+    private Dictionary<string, object> _parameters = new();
+
+    protected override void OnInitialized()
+    {
+        _server = GameServers.FindByID(serverId);
+        if (_server is null)
+        {
+            Nav.NavigateTo("/not-found");
+            return;
+        }
+
+        _page = Plugins.FindPage(_server, slug);
+        if (_page is null)
+        {
+            Nav.NavigateTo("/not-found");
+            return;
+        }
+
+        _parameters = new Dictionary<string, object>
+        {
+            ["Server"] = _server,
+        };
+    }
+}

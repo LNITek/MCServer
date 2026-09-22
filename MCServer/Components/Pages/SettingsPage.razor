@@ -1,7 +1,9 @@
 @page "/settings"
 @using Microsoft.Extensions.Options
+@implements IDisposable
 @inject IJSRuntime JS
 @inject IOptions<AppSettings> Config;
+@inject SettingsService SettingsStore;
 
 <PageTitle>MCServer - Settings</PageTitle>
 
@@ -10,20 +12,25 @@
 
     <MudText Typo="Typo.h6">General</MudText>
     <MudTextField Variant="Variant.Outlined" T="string" Label="Global Backup Path" @bind-Value="Settings.BackupPath"
-                  HelperText="The global location for storing world backups. Property helpers:
-{ServerPath} : Path to server files
-{ServerName} : The server name
-{ServerID} : The server ID
-{WorldName} : The world name.">
-    </MudTextField>
+                  HelperText="The global location for storing world backups. Property helpers:"/>
+    
+    <MudText Typo="Typo.subtitle1">{ServerPath} : Path to server files</MudText>
+    <MudText Typo="Typo.subtitle2">>{ServerName} : The server name</MudText>
+    <MudText Typo="Typo.subtitle2">>{ServerID} : The server ID</MudText>
+    <MudText Typo="Typo.subtitle1">>{WorldName} : The world name.</MudText>
 </MudStack>
 
 @code {
-    public AppSettings Settings;
+    public AppSettings Settings = null!;
 
     protected override void OnInitialized()
     {
         Settings = Config.Value;
         base.OnInitialized();
+    }
+
+    public void Dispose()
+    {
+        SettingsStore.Save();
     }
 }

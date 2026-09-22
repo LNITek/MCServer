@@ -29,4 +29,9 @@
     <PackageReference Include="MudBlazor.FontIcons.MaterialSymbols" Version="1.5.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\MCServer.Plugin\MCServer.Plugin.csproj" />
+    <ProjectReference Include="..\MCServer.BDS\MCServer.BDS.csproj" />
+  </ItemGroup>
+
 </Project>
