@@ -26,19 +26,19 @@ TODO
 
 ## Supported Platforms
 
-| OS		| GUI					|
-| -----		| -----					|
-| Windows	| :heavy_check_mark:	|
-| Linux		| :heavy_check_mark:			|
-| Docker	| :x:					|
+| OS		| GUI					| CLI |
+| -----		| -----					| ---					|
+| Windows	| :heavy_check_mark:	| :x:					|
+| Linux		| :heavy_check_mark:			| :x:					|
+| Docker	| :x:					| :x:					|
 
 ## Feature Support
 | Feature								                     | Bedrock				             | Java					|
 |-------------------------------------|-------------------------| -----					|
-| Auto Minecraft Updater				          | :x:					                | :x:					|
+| Auto Minecraft Updater				          | :heavy_check_mark:					                | :x:					|
 | Console Display						               | :heavy_check_mark:	     | :x:					|
 | User Interface						                | :heavy_check_mark:	     | :x:					|
-| Console Commands						              | :x:					                | :x:					|
+| Console Commands						              | :heavy_check_mark:					                | :x:					|
 | Auto Updater							                 | :x:					                | :x:					|
 | Server Properties File Editor			    | :heavy_check_mark:			   | :x:					|
 | CDN Config Editor			                | :x:			                  | :x:					|
@@ -53,13 +53,10 @@ TODO
 | Resource / Behavior Packs Manager		 | :x:					                | :x:					|
 | World Trim							                   | :x:					                | :x:					|
 | World Export							                 | :x:					                | :x:					|
-| World Backup System					            | :x:					                | :x:					|
+| World Backup System					            | :heavy_check_mark:					                | :x:					|
 | Schedule System						               | :wavy_dash:			          | :x:					|
 | Power Management						              | :heavy_check_mark:	     | :x:					|
-| Multi Server / World Support			     | :x:					                | :x:					|
+| Multi Server / World Support			     | :wavy_dash:					                | :x:					|
 | Server / World Version Control			   | :x:					                | :x:					|
 | User Management 						              | :x:					                | :x:					|
 | External Hosting						              | :x:					                | :x:					|
-
-## Command -Help
-TODO

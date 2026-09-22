@@ -39,7 +39,8 @@
                 <MudHidden Breakpoint="Breakpoint.MdAndDown">
                     <MudStack Row="true" Wrap="Wrap.Wrap">
                         <MudTooltip Text="Documentation">
-                            <MudMenu Icon="@Icons.Filled.Source" Variant="Variant.Outlined">
+                            <MudMenu Icon="@Icons.Filled.Source" Variant="Variant.Outlined" Color="Color.Inherit">
+                                <MudMenuItem Href="@($"/servers/{Server.Settings.ID}/files")" Icon="@Icons.Filled.Folder">Files</MudMenuItem>
                                 @foreach (var docFile in Server.DocFiles)
                                 {
                                     <MudMenuItem Href="@($"/docs/{Server.Settings.ID}/{docFile.Slug}")"
@@ -62,6 +63,7 @@
                         <MudMenu Label="Menus" EndIcon="@Icons.Filled.ArrowDropDown" Variant="Variant.Outlined"
                                  AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
                             <MudMenu StartIcon="@Icons.Filled.Source" Label="Documentation">
+                                <MudMenuItem Href="@($"/servers/{Server.Settings.ID}/files")" Icon="@Icons.Filled.Folder">Files</MudMenuItem>
                                 @foreach (var docFile in Server.DocFiles)
                                 {
                                     <MudMenuItem Href="@($"/docs/{Server.Settings.ID}/{docFile.Slug}")"

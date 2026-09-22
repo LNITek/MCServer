@@ -16,4 +16,16 @@
     <ProjectReference Include="..\MCServer.Plugin\MCServer.Plugin.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Components\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AdditionalFiles Include="Dialogs\NewItemDialog.razor" />
+    <AdditionalFiles Include="Pages\PacketsPage.razor" />
+    <AdditionalFiles Include="Pages\PlayersPage.razor" />
+    <AdditionalFiles Include="Pages\PropertiesPage.razor" />
+    <AdditionalFiles Include="Pages\ResourcesPage.razor" />
+  </ItemGroup>
+
 </Project>

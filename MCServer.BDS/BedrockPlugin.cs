@@ -20,5 +20,6 @@ public sealed class BedrockPlugin : IGameServerPlugin, IServerPagesProvider
         new ServerPageDefinition("props", "Properties", Icons.Rounded.HomeRepairService, typeof(PropertiesPage)),
         new ServerPageDefinition("player-settings", "Player Settings", Icons.Rounded.AdminPanelSettings, typeof(PlayersPage)),
         new ServerPageDefinition("packets", "Packet Configs", Icons.Rounded.Backpack, typeof(PacketsPage)),
+        new ServerPageDefinition("resources", "Resources", Icons.Rounded.Storage, typeof(ResourcesPage)),
     ];
 }

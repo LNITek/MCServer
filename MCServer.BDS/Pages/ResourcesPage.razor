@@ -1,0 +1,487 @@
+@using System.ComponentModel
+@using MCServer.BDS.Services
+@using MCServer.Plugins
+@using MCServer.BDS.Dialogs
+@using Microsoft.JSInterop
+@implements IDisposable
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject IJSRuntime JS
+
+<PageTitle>MCServer - Resources</PageTitle>
+
+<style>
+    .mud-input-control {
+        border: 0;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex: 0 1 auto;
+        max-width: 100%;
+        position: relative;
+        flex-direction: column;
+        vertical-align: top;
+    }
+</style>
+
+<div style="height:100%; display:flex; flex-direction:row;">
+    <MudStack Spacing="3" Style="min-width:25%; max-width:30%; width: 100%;">
+        <MudStack Row Spacing="2" Style="width: auto">
+            <MudTextField T="string" @bind-Value="SearchText" Placeholder="Search worlds..." Clearable Variant="Variant.Outlined"
+                          Adornment="Adornment.End" AdornmentIcon="@Icons.Rounded.Search" OnAdornmentClick="@Refresh"
+                          TextChanged="@(s => Search(s))" FullWidth>
+            </MudTextField>
+            
+            <MudMenu Icon="@Icons.Filled.MoreVert" Disabled="@Busy">
+                <MudMenuItem Icon="@Icons.Filled.Refresh" Label="Refresh" OnClick="Refresh"/>
+                <MudMenuItem Icon="@Icons.Filled.Add" Label="Create" OnClick="CreateWorldAsync"/>
+
+                <MudFileUpload T="IBrowserFile" FilesChanged="ImportWorld" Accept=".zip,.tar.gz,.tgz,.mcworld" MaximumFileCount="1" Disabled="@Busy">
+                    <CustomContent>
+                        <MudMenuItem Icon="@Icons.Filled.Upload" Label="Import"/>
+                    </CustomContent>
+                </MudFileUpload>
+            </MudMenu>
+        </MudStack>
+
+        <MudList T="WorldInfo" SelectionMode="SelectionMode.SingleSelection" @bind-SelectedValue="SelectedWorld" Style="overflow:auto; height:100%">
+            @foreach (var world in Worlds)
+            {
+                <MudListItem Value="@world">
+                    <ChildContent>
+                        <MudStack Spacing="1" Row AlignItems="AlignItems.Center">
+                            <MudChip Color="@(world.Name == ActiveWorldName ? Color.Success : Color.Secondary)"
+                                     Text="@(world.Name == ActiveWorldName ? "Active" : "Idle")"/>
+
+                            <MudStack Spacing="0">
+                                <MudText Typo="Typo.h6">@world.Name</MudText>
+                                <MudText Typo="Typo.body2">Size: @FormatSize(SelectedWorld.SizeBytes) • Modified: @SelectedWorld.LastModified.ToLocalTime()</MudText>
+                            </MudStack>
+                        </MudStack>
+                    </ChildContent>
+                </MudListItem>
+            }
+        </MudList>
+
+        @if (Busy)
+        {
+            <MudProgressLinear Indeterminate/>
+            <MudText Typo="Typo.body2">@BusyMessage</MudText>
+        }
+    </MudStack>
+
+    <MudDivider Vertical Class="mx-4" />
+
+    <MudStack Spacing="3" Style="flex-grow:1; overflow:auto;">
+        @if (SelectedWorld is not null)
+        {
+            <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                <MudText Typo="Typo.h6" Style="flex-grow:1;">@SelectedWorld.DisplayName</MudText>
+                @if (SelectedWorld.Name == ActiveWorldName)
+                {
+                    <MudTooltip Text="Active">
+                        <MudIconButton Icon="@Icons.Filled.CheckCircle" Color="Color.Success" Disabled/>
+                    </MudTooltip>
+                }
+                else
+                {
+                    <MudTooltip Text="@(Bedrock.ServerRunning ? "Switch (restarts server)" : "Activate")">
+                        <MudIconButton Icon="@Icons.Filled.RadioButtonUnchecked" OnClick="@(() => SelectWorldAsync(SelectedWorld))" Disabled="@Busy"/>
+                    </MudTooltip>
+                }
+                
+                <MudMenu Label="Export" Color="Color.Info" Icon="@Icons.Rounded.Download" 
+                         Disabled="@(Busy || (SelectedWorld?.Name == ActiveWorldName && Server.ServerRunningStatus))">
+                    <MudMenuItem Label=".zip" OnClick="@(() => ExportWorld(WorldArchiveFormat.Zip))" />
+                    <MudMenuItem Label=".tar.gz" OnClick="@(() => ExportWorld(WorldArchiveFormat.TarGz))" />
+                    <MudMenuItem Label=".mcworld" OnClick="@(() => ExportWorld(WorldArchiveFormat.McWorld))" />
+                </MudMenu>
+                
+                <MudIconButton Color="Color.Error" Icon="@Icons.Rounded.Delete" OnClick="DeleteWorld_Click" 
+                               Disabled="@(Busy || (SelectedWorld?.Name == ActiveWorldName && Server.ServerRunningStatus))" />
+            </MudStack>
+
+            <MudText Typo="Typo.h6">Resource Packs (@SelectedWorld.ResourcePacks.Count)</MudText>
+            <MudTable Items="@SelectedWorld.ResourcePacks" Dense Hover>
+                <HeaderContent>
+                    <MudTh>Name</MudTh>
+                    <MudTh>Size</MudTh>
+                    <MudTh Style="width: 48px;">
+                        <MudFileUpload T="IBrowserFile" FilesChanged="@(f => ImportPack(PackKind.Resource, f))" Accept=".mcpack,.zip" MaximumFileCount="1" 
+                                       Disabled="@Busy">
+                            <CustomContent>
+                                <MudIconButton Icon="@Icons.Rounded.Upload"
+                                               Disabled="@(Busy || (SelectedWorld?.Name == ActiveWorldName && Server.ServerRunningStatus))"/>
+                            </CustomContent>
+                        </MudFileUpload>
+                    </MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Name">@context.DisplayName</MudTd>
+                    <MudTd DataLabel="Size">@FormatSize(context.SizeBytes)</MudTd>
+                    <MudTd Style="text-align:right;">
+                        <MudIconButton Size="Size.Small" Icon="@Icons.Rounded.Download" Title="Export" OnClick="@(() => ExportPack(PackKind.Resource, context.Name))" 
+                                       Disabled="@Busy" />
+                        <MudIconButton Size="Size.Small" Color="Color.Error" Icon="@Icons.Rounded.Delete" OnClick="@(() => DeletePack(PackKind.Resource, context.Name))" 
+                                       Disabled="@(Busy || (SelectedWorld?.Name == ActiveWorldName && Server.ServerRunningStatus))"/>
+                    </MudTd>
+                </RowTemplate>
+                <NoRecordsContent>
+                    <MudText Typo="Typo.body2">No resource packs in this world.</MudText>
+                </NoRecordsContent>
+            </MudTable>
+
+            <MudText Typo="Typo.h6" Class="mt-2">Addons / Behavior Packs (@SelectedWorld.BehaviorPacks.Count)</MudText>
+            <MudTable Items="@SelectedWorld.BehaviorPacks" Dense Hover>
+                <HeaderContent>
+                    <MudTh>Name</MudTh>
+                    <MudTh>Size</MudTh>
+                    <MudTh Style="width: 48px;">
+                        <MudFileUpload T="IBrowserFile" FilesChanged="@(f => ImportPack(PackKind.Behavior, f))" Accept=".mcaddon,.zip" MaximumFileCount="1"
+                                       Disabled="@(Busy || (SelectedWorld?.Name == ActiveWorldName && Server.ServerRunningStatus))">
+                            <CustomContent>
+                                <MudIconButton Icon="@Icons.Rounded.Upload"
+                                               Disabled="@(Busy || (SelectedWorld?.Name == ActiveWorldName && Server.ServerRunningStatus))"/>
+                            </CustomContent>
+                        </MudFileUpload>
+                    </MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Name">@context.DisplayName</MudTd>
+                    <MudTd DataLabel="Size">@FormatSize(context.SizeBytes)</MudTd>
+                    <MudTd Style="text-align:right;">
+                        <MudIconButton Size="Size.Small" Icon="@Icons.Rounded.Download" Title="Export" OnClick="@(() => ExportPack(PackKind.Behavior, context.Name))" 
+                                       Disabled="@Busy" />
+                        <MudIconButton Size="Size.Small" Color="Color.Error" Icon="@Icons.Rounded.Delete" OnClick="@(() => DeletePack(PackKind.Behavior, context.Name))"
+                                       Disabled="@(Busy || (SelectedWorld?.Name == ActiveWorldName && Server.ServerRunningStatus))"/>
+                    </MudTd>
+                </RowTemplate>
+                <NoRecordsContent>
+                    <MudText Typo="Typo.body2">No addons in this world.</MudText>
+                </NoRecordsContent>
+            </MudTable>
+        }
+        else
+        {
+            <MudAlert Variant="Variant.Text" Severity="Severity.Info">Select a world, or import a .zip / .tar.gz / .mcworld archive.</MudAlert>
+        }
+    </MudStack>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public IGameServer Server { get; set; } = null!;
+
+    private BedrockServer Bedrock => (BedrockServer)Server;
+
+    public ObservableCollection<WorldInfo> WorldsList = [];
+    public ExList<WorldInfo> Worlds;
+    public string SearchText { get; set; } = string.Empty;
+    public WorldInfo? SelectedWorld = default;
+    public string? ActiveWorldName = default;
+    private string NewWorldName = "";
+
+    private bool Busy;
+    private string BusyMessage = "";
+
+    public ResourcesPage()
+    {
+        Worlds = new(WorldsList);
+        Worlds.SetSort((a, b) => string.Compare(a.DisplayName, b.DisplayName, StringComparison.OrdinalIgnoreCase));
+        Worlds.SetFilter(filter =>
+        {
+            if (string.IsNullOrWhiteSpace(SearchText)) return true;
+            return filter.Name.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
+                filter.DisplayName.Contains(SearchText, StringComparison.OrdinalIgnoreCase);
+        });
+    }
+
+    protected override void OnInitialized()
+    {
+        Refresh();
+    }
+
+    public void Dispose() { }
+
+    private void Refresh()
+    {
+        var selectedName = SelectedWorld?.Name;
+        WorldsList.Clear();
+        WorldsList.AddRange(Bedrock.GetWorlds());
+        Worlds.RefreshFilter();
+        SelectedWorld = Worlds.FirstOrDefault(w => w.Name == selectedName) ?? Worlds.FirstOrDefault();
+        ActiveWorldName = Bedrock.GetProperties().FirstOrDefault(p => p.Name == "level-name")?.Value;
+        StateHasChanged();
+    }
+
+    private void Search(string value)
+    {
+        SearchText = value;
+        Worlds.RefreshFilter();
+        StateHasChanged();
+    }
+
+    private static string FormatSize(long bytes) => bytes switch
+    {
+        < 1024 => $"{bytes} B",
+        < 1024 * 1024 => $"{bytes / 1024.0:F1} KB",
+        < 1024L * 1024 * 1024 => $"{bytes / (1024.0 * 1024):F1} MB",
+        _ => $"{bytes / (1024.0 * 1024 * 1024):F2} GB",
+    };
+
+    private async Task ImportWorld(IBrowserFile? file)
+    {
+        if (file is null) return;
+        Busy = true;
+        BusyMessage = $"Importing {file.Name}...";
+        try
+        {
+            await using var stream = file.OpenReadStream(maxAllowedSize: 1024L * 1024 * 1024);
+            using var copy = new MemoryStream();
+            await stream.CopyToAsync(copy);
+            copy.Seek(0, SeekOrigin.Begin);
+            var imported = await Bedrock.ImportWorldAsync(copy, file.Name);
+            Snackbar.Add($"Imported world: {string.Join(", ", imported)}", Severity.Success);
+            Refresh();
+            SelectedWorld = Worlds.FirstOrDefault(w => imported.Contains(w.Name)) ?? SelectedWorld;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"World import failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            Busy = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ExportWorld(WorldArchiveFormat format)
+    {
+        if (SelectedWorld is null) return;
+        Busy = true;
+        BusyMessage = $"Exporting {SelectedWorld.Name}...";
+        try
+        {
+            var (stream, fileName) = await Bedrock.ExportWorldAsync(SelectedWorld.Name, format);
+            await using (stream)
+                await DownloadAsync(fileName, stream);
+            Snackbar.Add($"Exported {fileName}", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"World export failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            Busy = false;
+            StateHasChanged();
+        }
+    }
+
+    private void DeleteWorld_Click()
+    {
+        if (SelectedWorld is null) return;
+        try
+        {
+            Bedrock.DeleteWorld(SelectedWorld.Name);
+            Snackbar.Add($"Deleted world {SelectedWorld.Name}", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Delete failed: {ex.Message}", Severity.Error);
+        }
+        Refresh();
+    }
+
+    private void SetLevelName(string name)
+    {
+        var props = Bedrock.GetProperties();
+        var prop = props.FirstOrDefault(p => p.Name.Equals("level-name", StringComparison.OrdinalIgnoreCase));
+        if (prop is null)
+            props.Add(new Property("level-name", name, ["# The name of the level (world folder)."]));
+        else
+            prop.Value = name;
+        Bedrock.SetProperties(props);
+        ActiveWorldName = name;
+    }
+
+    private async Task SelectWorldAsync(WorldInfo world)
+    {
+        if (world.Name == ActiveWorldName || Busy) return;
+        Busy = true;
+        try
+        {
+            if (Bedrock.ServerRunning)
+            {
+                BusyMessage = $"Stopping server to switch to {world.Name}...";
+                StateHasChanged();
+                if (!await Bedrock.StopAsync("Changing active world", TimeSpan.FromSeconds(5)))
+                    throw new InvalidOperationException("Server could not be stopped.");
+                SetLevelName(world.Name);
+                BusyMessage = $"Starting server with {world.Name}...";
+                StateHasChanged();
+                Bedrock.StartServer();
+                Snackbar.Add($"Switched to {world.Name}; server restarting.", Severity.Success);
+            }
+            else if (Bedrock.CommandRunning)
+            {
+                Snackbar.Add("Wait until the current maintenance task finishes before switching worlds.", Severity.Warning);
+            }
+            else
+            {
+                SetLevelName(world.Name);
+                Snackbar.Add($"Active world set to {world.Name}. Takes effect on next start.", Severity.Success);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"World switch failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            Busy = false;
+            Refresh();
+        }
+    }
+
+    private async Task NewWorldKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            await CreateWorldAsync();
+    }
+
+    private async Task CreateWorldAsync()
+    {
+        string? name = (SearchText ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(name) || name is "." or ".." || name.IndexOfAny(['/', '\\']) >= 0 || name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+        {
+            name = await GetNameByDialog();
+            if(name is null) return;
+
+            if (string.IsNullOrWhiteSpace(name) || name is "." or ".." || name.IndexOfAny(['/', '\\']) >= 0 || name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+            {
+                Snackbar.Add("Enter a valid world (folder) name.", Severity.Error);
+                return;
+            }
+        }
+        var dir = Path.Combine(Bedrock.GetWorldsPath(), name);
+        if (Directory.Exists(dir) || File.Exists(dir))
+        {
+            Snackbar.Add($"A world named '{name}' already exists.", Severity.Error);
+            return;
+        }
+        Busy = true;
+        try
+        {
+            // Create the folder and select it, so the BDS software generates
+            // the world files there on next start.
+            Directory.CreateDirectory(dir);
+            NewWorldName = "";
+            Snackbar.Add($"Created world folder '{name}'.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Create failed: {ex.Message}", Severity.Error);
+            Busy = false;
+            Refresh();
+            return;
+        }
+        Busy = false;
+        Refresh();
+        SelectedWorld = Worlds.FirstOrDefault(w => w.Name == name) ?? SelectedWorld;
+        var world = SelectedWorld is not null && SelectedWorld.Name == name ? SelectedWorld : Bedrock.GetWorld(name);
+        if (world is not null)
+            await SelectWorldAsync(world);
+
+        async Task<string?> GetNameByDialog()
+        {
+            var parameters = new DialogParameters
+            {
+                { nameof(NewItemDialog.Value), Server.Settings.Name }
+            };
+
+            var options = new DialogOptions
+            {
+                CloseOnEscapeKey = true
+            };
+
+            var dialog = await DialogService.ShowAsync<NewItemDialog>("Edit Value", parameters, options);
+            var result = await dialog.Result;
+
+            if (!result.Canceled && result.Data is string newValue)
+                return newValue.Trim();
+            return null;
+        }
+    }
+
+    private async Task ImportPack(PackKind kind, IBrowserFile? file)
+    {
+        if (file is null || SelectedWorld is null) return;
+        Busy = true;
+        BusyMessage = $"Importing {file.Name}...";
+        try
+        {
+            await using var stream = file.OpenReadStream(maxAllowedSize: 512L * 1024 * 1024);
+            using var copy = new MemoryStream();
+            await stream.CopyToAsync(copy);
+            copy.Seek(0, SeekOrigin.Begin);
+            var imported = await Bedrock.ImportPackAsync(SelectedWorld.Name, kind, copy, file.Name);
+            Snackbar.Add($"Imported: {string.Join(", ", imported)}", Severity.Success);
+            Refresh();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Pack import failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            Busy = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ExportPack(PackKind kind, string packName)
+    {
+        if (SelectedWorld is null) return;
+        Busy = true;
+        try
+        {
+            var (stream, fileName) = await Bedrock.ExportPackAsync(SelectedWorld.Name, kind, packName);
+            await using (stream)
+                await DownloadAsync(fileName, stream);
+            Snackbar.Add($"Exported {fileName}", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Pack export failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            Busy = false;
+            StateHasChanged();
+        }
+    }
+
+    private void DeletePack(PackKind kind, string packName)
+    {
+        if (SelectedWorld is null) return;
+        try
+        {
+            Bedrock.DeletePack(SelectedWorld.Name, kind, packName);
+            Snackbar.Add($"Deleted {packName}", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Delete failed: {ex.Message}", Severity.Error);
+        }
+        Refresh();
+    }
+
+    private async Task DownloadAsync(string fileName, Stream content)
+    {
+        content.Seek(0, SeekOrigin.Begin);
+        var streamRef = new DotNetStreamReference(content, leaveOpen: true);
+        await JS.InvokeVoidAsync("downloadFileFromStream", fileName, streamRef);
+    }
+}

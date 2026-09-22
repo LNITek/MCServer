@@ -1,0 +1,632 @@
+@page "/servers/{serverId}/files"
+@using MCServer.Components.Dialogs
+@using MCServer.Plugins
+@inject NavigationManager Nav
+@inject GameServers GameServers
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject IJSRuntime JS
+
+<PageTitle>MCServer - Files</PageTitle>
+
+@if (Server is null)
+{
+    <PageLoading Text="Loading server..." />
+}
+else
+{
+    <style>
+    .mud-table-toolbar{
+        left: 0;
+        position: sticky;
+        padding-left: 16px;
+        padding-right: 8px;
+        padding-inline-start: 16px;
+        padding-inline-end: 8px;
+        height: auto;
+    }
+    </style>
+    
+    <MudTable Items="@FilteredEntries" Dense Hover FixedHeader Height="calc(100dvh - 112px)" Style="margin: -18px;">
+        <ToolBarContent>
+            <MudStack Style="width: 100%">
+                <MudStack Row AlignItems="AlignItems.Center" Spacing="1" Wrap="Wrap.Wrap" Style="width: 100%">
+                    <MudFileUpload T="IReadOnlyList<IBrowserFile>" FilesChanged="UploadFilesAsync" MaximumFileCount="20" Disabled="@Busy">
+                        <CustomContent>
+                            <MudIconButton Variant="Variant.Filled" Title="Upload" Color="Color.Primary" Icon="@Icons.Filled.Upload" Disabled="@Busy"
+                                           OnClick="@context.OpenFilePickerAsync"/>
+                        </CustomContent>
+                        <SelectedTemplate/>
+                    </MudFileUpload>
+
+                    <MudDivider Vertical FlexItem="true" Style="margin-left: 12px; margin-top: 8px; margin-bottom: 8px;"/>
+
+                    <MudIconButton Icon="@Icons.Filled.Home" Title="Server root" OnClick="@(() => NavigateTo(""))" Disabled="@(Busy || CurrentPath == "")"/>
+                    <MudIconButton Icon="@Icons.Filled.ArrowUpward" Title="Up one level" OnClick="GoUp" Disabled="@(Busy || CurrentPath == "")"/>
+
+                    @foreach (var crumb in Breadcrumbs)
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">/</MudText>
+                        <MudLink Typo="Typo.body2" OnClick="@(() => NavigateTo(crumb.Path))">@crumb.Name</MudLink>
+                    }
+
+                    <MudSpacer/>
+
+                    <MudStack Row>
+                        <MudTextField T="string" @bind-Value="FileSearch" Placeholder="Search..." Clearable
+                                      Variant="Variant.Outlined" Margin="Margin.Dense"
+                                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Filled.Search" Immediate="true"/>
+
+                        <MudMenu Icon="@Icons.Filled.MoreHoriz">
+                            <MudMenuItem Icon="@Icons.Filled.Refresh" Label="Refresh" OnClick="RefreshFiles" Disabled="@Busy"/>
+
+                            <MudMenuItem Icon="@Icons.Filled.CreateNewFolder" OnClick="NewFolderAsync" Disabled="@Busy"
+                                         Label="New folder"/>
+
+                            <MudMenuItem Icon="@(ExtractArchives ? Icons.Filled.CheckBox : Icons.Filled.CheckBoxOutlineBlank)"
+                                         Label="Extract archive on upload" OnClick="() => ExtractArchives = !ExtractArchives"/>
+
+                            <MudDivider/>
+
+                            <MudHidden Breakpoint="Breakpoint.SmAndUp">
+                                <MudMenuItem Icon="@(AreAllSelected ? Icons.Filled.CheckBox : Icons.Filled.CheckBoxOutlineBlank)"
+                                             Label="Select All" OnClick="() => ToggleSelectAll(!AreAllSelected)"/>
+                            </MudHidden>
+
+                            <MudMenuItem Icon="@Icons.Filled.Download" OnClick="DownloadSelectionAsync" Disabled="@(Busy || SelectedFiles.Count == 0)"
+                                         Label="Download Selected"/>
+
+                            <MudMenuItem Icon="@Icons.Filled.Delete" OnClick="DeleteSelectionAsync" Disabled="@(Busy || SelectedFiles.Count == 0)"
+                                         Label="Delete Selected" IconColor="Color.Error"/>
+
+                            @if (Clipboard.Count > 0)
+                            {
+                                <MudDivider/>
+
+                                <MudMenuItem Icon="@Icons.Filled.ContentPaste" OnClick="PasteAsync" Disabled="@Busy"
+                                             Label="@(Clipboard.Count > 0 ? $"Paste ({Clipboard.Count} {(ClipboardIsCut ? "move" : "copy")})" : "Paste")"/>
+
+                                <MudMenuItem Icon="@Icons.Filled.Clear" Label="Clear clipboard" OnClick="ClearClipboard" Disabled="@Busy"/>
+                            }
+                        </MudMenu>
+                    </MudStack>
+                </MudStack>
+
+                @if (!string.IsNullOrWhiteSpace(ClipboardNotice))
+                {
+                    <MudAlert Severity="Severity.Info" Variant="Variant.Text" Dense="true">@ClipboardNotice</MudAlert>
+                }
+                @if (Busy)
+                {
+                    <MudProgressLinear Indeterminate/>
+                    <MudText Typo="Typo.body2">@BusyMessage</MudText>
+                }
+                
+                <MudHidden Breakpoint="Breakpoint.SmAndUp">
+                    <MudDivider/>
+                </MudHidden>
+            </MudStack>
+        </ToolBarContent>
+        <HeaderContent>
+            <MudHidden Breakpoint="Breakpoint.Xs">
+                <MudTh Style="width:48px;">
+                    <MudCheckBox T="bool" Value="@AreAllSelected" ValueChanged="ToggleSelectAll" Dense/>
+                </MudTh>
+            </MudHidden>
+            <MudHidden Breakpoint="Breakpoint.SmAndUp">
+                <MudTh Style="width: 96px;"/>
+            </MudHidden>
+            <MudTh>Name</MudTh>
+            <MudTh Style="text-align:right; width: 160px;">Size</MudTh>
+            <MudTh Style="text-align:right; width: 160px;">Modified</MudTh>
+            <MudHidden Breakpoint="Breakpoint.Xs">
+                <MudTh Style="text-align:right; width: 96px;">Actions</MudTh>
+            </MudHidden>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>
+                <MudStack Row Spacing="2" AlignItems="AlignItems.Center">
+                    <MudCheckBox T="bool" Value="@SelectedFiles.Contains(context.Name)"
+                                 ValueChanged="@(v => ToggleSelect(context.Name, v))" Dense/>
+
+                    <MudHidden Breakpoint="Breakpoint.SmAndUp">
+                        <MudMenu Icon="@Icons.Filled.MoreVert" Size="Size.Small">
+                            @if (context.IsDirectory)
+                            {
+                                <MudMenu StartIcon="@Icons.Filled.Download" Size="Size.Small" Dense="true" Label="Download">
+                                    <MudMenuItem Label=".zip" OnClick="@(() => DownloadFolderAsync(context, FileArchiveFormat.Zip))"/>
+                                    <MudMenuItem Label=".tar.gz" OnClick="@(() => DownloadFolderAsync(context, FileArchiveFormat.TarGz))"/>
+                                </MudMenu>
+                            }
+                            else
+                            {
+                                <MudMenuItem Icon="@Icons.Filled.Download" Label="Download"
+                                             OnClick="@(() => DownloadFileAsync(context))" Disabled="@Busy"/>
+                                @if (ServerFileService.IsEditableFile(context.Name))
+                                {
+                                    <MudMenuItem Icon="@Icons.Filled.Edit" Label="Edit"
+                                                 OnClick="@(() => EditFileAsync(context))" Disabled="@Busy"/>
+                                }
+                            }
+
+                            <MudMenuItem Icon="@Icons.Filled.DriveFileRenameOutline" Label="Rename"
+                                         OnClick="@(() => RenameAsync(context))" Disabled="@Busy"/>
+
+                            <MudDivider/>
+
+                            <MudMenuItem Icon="@Icons.Filled.ContentCopy" Label="Copy"
+                                         OnClick="@(() => CopyToClipboard(context, false))" Disabled="@Busy"/>
+                            <MudMenuItem Icon="@Icons.Filled.ContentCut" Label="Cut (move)"
+                                         OnClick="@(() => CopyToClipboard(context, true))" Disabled="@Busy"/>
+                            <MudMenuItem IconColor="Color.Error" Icon="@Icons.Filled.Delete" Label="Delete"
+                                         OnClick="@(() => DeleteSingleAsync(context))" Disabled="@Busy"/>
+                        </MudMenu>
+                    </MudHidden>
+                </MudStack>
+            </MudTd>
+            <MudTd DataLabel="Name">
+                <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                    <MudIcon Icon="@(context.IsDirectory ? Icons.Filled.Folder : IconFor(context.Name))"
+                             Color="@(context.IsDirectory ? Color.Warning : Color.Default)"/>
+                    @if (context.IsDirectory)
+                    {
+                        <MudLink Typo="Typo.body1" OnClick="@(() => NavigateTo(context.RelativePath))">@context.Name</MudLink>
+                    }
+                    else if (ServerFileService.IsEditableFile(context.Name))
+                    {
+                        <MudLink Typo="Typo.body1" OnClick="@(() => EditFileAsync(context))">@context.Name</MudLink>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body1">@context.Name</MudText>
+                    }
+                </MudStack>
+            </MudTd>
+            <MudTd DataLabel="Size" Style="text-align:right; min-width: 160px; flex-grow: 1;">
+                @(context.IsDirectory ? "—" : FormatSize(context.SizeBytes))
+            </MudTd>
+            <MudTd DataLabel="Modified" Style="text-align:right;">
+                @context.LastModified.ToLocalTime().ToString("g")
+            </MudTd>
+
+            <MudHidden Breakpoint="Breakpoint.Xs">
+                <MudTd Style="text-align:right;">
+                    <MudMenu Icon="@Icons.Filled.MoreVert" Size="Size.Small">
+                        @if (context.IsDirectory)
+                        {
+                            <MudMenu StartIcon="@Icons.Filled.Download" Size="Size.Small" Dense="true" Label="Download">
+                                <MudMenuItem Label=".zip" OnClick="@(() => DownloadFolderAsync(context, FileArchiveFormat.Zip))"/>
+                                <MudMenuItem Label=".tar.gz" OnClick="@(() => DownloadFolderAsync(context, FileArchiveFormat.TarGz))"/>
+                            </MudMenu>
+                        }
+                        else
+                        {
+                            <MudMenuItem Icon="@Icons.Filled.Download" Label="Download"
+                                         OnClick="@(() => DownloadFileAsync(context))" Disabled="@Busy"/>
+                            @if (ServerFileService.IsEditableFile(context.Name))
+                            {
+                                <MudMenuItem Icon="@Icons.Filled.Edit" Label="Edit"
+                                             OnClick="@(() => EditFileAsync(context))" Disabled="@Busy"/>
+                            }
+                        }
+
+                        <MudMenuItem Icon="@Icons.Filled.DriveFileRenameOutline" Label="Rename"
+                                     OnClick="@(() => RenameAsync(context))" Disabled="@Busy"/>
+
+                        <MudDivider/>
+
+                        <MudMenuItem Icon="@Icons.Filled.ContentCopy" Label="Copy"
+                                     OnClick="@(() => CopyToClipboard(context, false))" Disabled="@Busy"/>
+                        <MudMenuItem Icon="@Icons.Filled.ContentCut" Label="Cut"
+                                     OnClick="@(() => CopyToClipboard(context, true))" Disabled="@Busy"/>
+                        <MudMenuItem IconColor="Color.Error" Icon="@Icons.Filled.Delete" Label="Delete"
+                                     OnClick="@(() => DeleteSingleAsync(context))" Disabled="@Busy"/>
+                    </MudMenu>
+                </MudTd>
+            </MudHidden>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText Typo="Typo.body2">This folder is empty.</MudText>
+        </NoRecordsContent>
+    </MudTable>
+}
+
+@code {
+    [Parameter] public string serverId { get; set; } = "";
+    public IGameServer Server { get; set; } = null!;
+
+    private string CurrentPath = "";
+    private List<ServerEntry> FileEntries = [];
+    private string FileSearch = "";
+    private HashSet<string> SelectedFiles = new(StringComparer.Ordinal);
+    private List<string> Clipboard = [];
+    private bool ClipboardIsCut;
+    private bool ExtractArchives = true;
+
+    private bool Busy;
+    private string BusyMessage = "";
+
+    protected override void OnInitialized()
+    {
+        var server = GameServers.FindByID(serverId);
+        if (server is null)
+        {
+            Nav.NavigateTo("/not-found");
+            return;
+        }
+        Server = server;
+        RefreshFiles();
+    }
+
+    private static string FormatSize(long bytes) => bytes switch
+    {
+        < 1024 => $"{bytes} B",
+        < 1024 * 1024 => $"{bytes / 1024.0:F1} KB",
+        < 1024L * 1024 * 1024 => $"{bytes / (1024.0 * 1024):F1} MB",
+        _ => $"{bytes / (1024.0 * 1024 * 1024):F2} GB",
+    };
+
+    private static string IconFor(string name) => Path.GetExtension(name).ToLowerInvariant() switch
+    {
+        ".zip" or ".tar.gz" or ".tgz" or ".mcworld" or ".mcpack" or ".mcaddon" => Icons.Filled.Archive,
+        ".json" or ".xml" or ".yml" or ".yaml" or ".toml" or ".cfg" or ".conf" or ".ini" or ".properties" => Icons.Filled.Settings,
+        ".txt" or ".md" or ".log" or ".csv" or ".mcfunction" => Icons.Filled.Description,
+        ".png" or ".jpg" or ".jpeg" or ".gif" or ".webp" => Icons.Filled.Image,
+        _ => Icons.Filled.InsertDriveFile,
+    };
+
+    private sealed record Crumb(string Name, string Path);
+
+    private List<Crumb> Breadcrumbs
+    {
+        get
+        {
+            var crumbs = new List<Crumb>();
+            if (string.IsNullOrEmpty(CurrentPath))
+                return crumbs;
+            var parts = CurrentPath.Split('/');
+            for (var i = 0; i < parts.Length; i++)
+                crumbs.Add(new(parts[i], string.Join('/', parts[..(i + 1)])));
+            return crumbs;
+        }
+    }
+
+    private IEnumerable<ServerEntry> FilteredEntries =>
+        string.IsNullOrWhiteSpace(FileSearch)
+            ? FileEntries
+            : FileEntries.Where(e => e.Name.Contains(FileSearch, StringComparison.OrdinalIgnoreCase));
+
+    private bool AreAllSelected => FilteredEntries.Any() && FilteredEntries.All(e => SelectedFiles.Contains(e.Name));
+
+    private string ClipboardNotice => Clipboard.Count == 0 ? "" :
+        $"{(ClipboardIsCut ? "Move" : "Copy")} {Clipboard.Count} item(s): {string.Join(", ", Clipboard.Select(p => p.Split('/').Last()).Take(3))}" +
+        (Clipboard.Count > 3 ? $" (+{Clipboard.Count - 3} more)" : "") + $" — navigate to a folder and press Paste.";
+
+    private void RefreshFiles()
+    {
+        try
+        {
+            FileEntries = Server.ListEntries(CurrentPath);
+            SelectedFiles.RemoveWhere(n => FileEntries.All(e => e.Name != n));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Could not list folder: {ex.Message}", Severity.Error);
+            CurrentPath = "";
+            FileEntries = Server.ListEntries("");
+        }
+        StateHasChanged();
+    }
+
+    private void NavigateTo(string path)
+    {
+        CurrentPath = (path ?? "").Replace('\\', '/').Trim().Trim('/');
+        if (CurrentPath == ".") CurrentPath = "";
+        RefreshFiles();
+    }
+
+    private void GoUp()
+    {
+        var idx = CurrentPath.LastIndexOf('/');
+        NavigateTo(idx < 0 ? "" : CurrentPath[..idx]);
+    }
+
+    private void ToggleSelect(string name, bool value)
+    {
+        if (value) SelectedFiles.Add(name);
+        else SelectedFiles.Remove(name);
+    }
+
+    private void ToggleSelectAll(bool value)
+    {
+        if (value)
+            foreach (var e in FilteredEntries) SelectedFiles.Add(e.Name);
+        else
+            foreach (var e in FilteredEntries) SelectedFiles.Remove(e.Name);
+    }
+
+    private string EntryPath(string name) =>
+        string.IsNullOrEmpty(CurrentPath) ? name : $"{CurrentPath}/{name}";
+
+    private async Task UploadFilesAsync(IReadOnlyList<IBrowserFile>? files)
+    {
+        if (files is null || files.Count == 0) return;
+        Busy = true;
+        var done = 0;
+        try
+        {
+            foreach (var file in files)
+            {
+                BusyMessage = $"Uploading {file.Name}...";
+                StateHasChanged();
+                await using var stream = file.OpenReadStream(maxAllowedSize: ServerFileService.MaxUploadBytes);
+                using var copy = new MemoryStream();
+                await stream.CopyToAsync(copy);
+                copy.Seek(0, SeekOrigin.Begin);
+                if (ExtractArchives && ServerFileService.IsArchiveFile(file.Name))
+                    await Server.ExtractUploadedArchiveAsync(CurrentPath, file.Name, copy);
+                else
+                    Server.SaveUploadedFile(CurrentPath, file.Name, copy);
+                done++;
+            }
+            Snackbar.Add($"Uploaded {done} file(s).", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Upload failed after {done} file(s): {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            Busy = false;
+            RefreshFiles();
+        }
+    }
+
+    private async Task NewFolderAsync()
+    {
+        var name = await PromptAsync("New folder", "Create a folder inside the current directory:", "Folder name");
+        if (name is null) return;
+        try
+        {
+            Server.CreateFolder(CurrentPath, name);
+            Snackbar.Add($"Created folder {name}", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Could not create folder: {ex.Message}", Severity.Error);
+        }
+        RefreshFiles();
+    }
+
+    private async Task RenameAsync(ServerEntry entry)
+    {
+        var name = await PromptAsync("Rename", $"Rename '{entry.Name}' to:", "New name", entry.Name);
+        if (name is null || name == entry.Name) return;
+        try
+        {
+            Server.RenameEntry(entry.RelativePath, name);
+            SelectedFiles.Remove(entry.Name);
+            Snackbar.Add($"Renamed to {name}", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Rename failed: {ex.Message}", Severity.Error);
+        }
+        RefreshFiles();
+    }
+
+    private async Task DeleteSingleAsync(ServerEntry entry) =>
+        await DeleteManyAsync([entry.Name]);
+
+    private async Task DeleteSelectionAsync() =>
+        await DeleteManyAsync([.. SelectedFiles]);
+
+    private async Task DeleteManyAsync(List<string> names)
+    {
+        if (names.Count == 0) return;
+        var parameters = new DialogParameters
+        {
+            { nameof(ConfirmDialog.Message), $"Delete {names.Count} item(s) from '{(string.IsNullOrEmpty(CurrentPath) ? "server root" : CurrentPath)}'? This cannot be undone." },
+        };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Delete", parameters);
+        var result = await dialog.Result;
+        if (result is null || result.Canceled) return;
+        var done = 0;
+        foreach (var name in names)
+        {
+            try
+            {
+                Server.DeleteEntry(EntryPath(name));
+                SelectedFiles.Remove(name);
+                Clipboard.Remove(EntryPath(name));
+                done++;
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Could not delete {name}: {ex.Message}", Severity.Error);
+            }
+        }
+        if (done > 0) Snackbar.Add($"Deleted {done} item(s).", Severity.Success);
+        RefreshFiles();
+    }
+
+    private void CopyToClipboard(ServerEntry entry, bool cut)
+    {
+        var path = entry.RelativePath;
+        if (cut)
+        {
+            Clipboard = [path];
+            ClipboardIsCut = true;
+            Snackbar.Add($"Cut {entry.Name} — navigate to a folder and press Paste.", Severity.Info);
+        }
+        else
+        {
+            if (!ClipboardIsCut && !Clipboard.Contains(path))
+                Clipboard.Add(path);
+            else if (ClipboardIsCut)
+                Clipboard = [path];
+            ClipboardIsCut = false;
+            Snackbar.Add($"Copied {entry.Name} — navigate to a folder and press Paste.", Severity.Info);
+        }
+        StateHasChanged();
+    }
+
+    private void ClearClipboard()
+    {
+        Clipboard = [];
+        ClipboardIsCut = false;
+        StateHasChanged();
+    }
+
+    private async Task PasteAsync()
+    {
+        if (Clipboard.Count == 0) return;
+        Busy = true;
+        BusyMessage = ClipboardIsCut ? "Moving..." : "Copying...";
+        var done = 0;
+        try
+        {
+            foreach (var src in Clipboard.ToList())
+            {
+                var destDir = CurrentPath;
+                var srcParent = src.Contains('/') ? src[..src.LastIndexOf('/')] : "";
+                if (ClipboardIsCut && string.Equals(srcParent, destDir, StringComparison.Ordinal))
+                    continue; // already here
+                if (ClipboardIsCut)
+                    Server.MoveEntry(src, destDir);
+                else
+                    Server.CopyEntry(src, destDir);
+                done++;
+            }
+            Snackbar.Add($"{(ClipboardIsCut ? "Moved" : "Copied")} {done} item(s).", Severity.Success);
+            if (ClipboardIsCut) Clipboard = [];
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Paste failed after {done} item(s): {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            Busy = false;
+            RefreshFiles();
+        }
+    }
+
+    private async Task DownloadFileAsync(ServerEntry entry)
+    {
+        Busy = true;
+        try
+        {
+            await using var stream = Server.OpenReadEntry(entry.RelativePath);
+            using var copy = new MemoryStream();
+            await stream.CopyToAsync(copy);
+            copy.Seek(0, SeekOrigin.Begin);
+            await DownloadAsync(entry.Name, copy);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Download failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            Busy = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DownloadFolderAsync(ServerEntry entry, FileArchiveFormat format)
+    {
+        Busy = true;
+        BusyMessage = $"Compressing {entry.Name}...";
+        try
+        {
+            var (stream, fileName) = await Server.ExportFolderAsync(entry.RelativePath, format);
+            await using (stream)
+                await DownloadAsync(fileName, stream);
+            Snackbar.Add($"Exported {fileName}", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Download failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            Busy = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DownloadSelectionAsync()
+    {
+        if (SelectedFiles.Count == 0) return;
+        Busy = true;
+        BusyMessage = "Compressing selection...";
+        try
+        {
+            var (stream, fileName) = await Server.ExportEntriesZipAsync(CurrentPath, SelectedFiles);
+            await using (stream)
+                await DownloadAsync(fileName, stream);
+            Snackbar.Add($"Exported {fileName}", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Download failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            Busy = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task EditFileAsync(ServerEntry entry)
+    {
+        string content;
+        try
+        {
+            content = Server.ReadTextFile(entry.RelativePath);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Could not open file: {ex.Message}", Severity.Error);
+            return;
+        }
+        var parameters = new DialogParameters { { nameof(TextEditorDialog.Content), content } };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<TextEditorDialog>($"Edit {entry.RelativePath}", parameters, options);
+        var result = await dialog.Result;
+        if (result is null || result.Canceled || result.Data is not string updated) return;
+        try
+        {
+            Server.WriteTextFile(entry.RelativePath, updated);
+            Snackbar.Add($"Saved {entry.Name}", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Save failed: {ex.Message}", Severity.Error);
+        }
+        RefreshFiles();
+    }
+
+    private async Task<string?> PromptAsync(string title, string message, string label, string initial = "")
+    {
+        var parameters = new DialogParameters
+        {
+            { nameof(PromptDialog.Message), message },
+            { nameof(PromptDialog.Label), label },
+            { nameof(PromptDialog.Value), initial },
+        };
+        var dialog = await DialogService.ShowAsync<PromptDialog>(title, parameters);
+        var result = await dialog.Result;
+        if (result is null || result.Canceled || result.Data is not string value)
+            return null;
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
+    private async Task DownloadAsync(string fileName, Stream content)
+    {
+        content.Seek(0, SeekOrigin.Begin);
+        var streamRef = new DotNetStreamReference(content, leaveOpen: true);
+        await JS.InvokeVoidAsync("downloadFileFromStream", fileName, streamRef);
+    }
+}

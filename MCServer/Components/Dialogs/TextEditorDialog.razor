@@ -1,0 +1,21 @@
+<MudDialog>
+    <DialogContent>
+        <MudTextField @bind-Value="Content" Variant="Variant.Outlined" Lines="22"
+                      Immediate="true" FullWidth="true"
+                      Style="font-family:monospace;" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public string Content { get; set; } = "";
+
+    private void Submit() => MudDialog.Close(DialogResult.Ok(Content));
+    private void Cancel() => MudDialog.Cancel();
+}
