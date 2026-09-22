@@ -7,6 +7,9 @@
 Data/
 *.sln
 
+# AI
+.junie/
+
 # User-specific files
 *.rsuser
 *.suo
