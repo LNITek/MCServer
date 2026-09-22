@@ -1,11 +1,365 @@
 ﻿@page "/dashboard"
 
+@using MCServer.Components.Dialogs
+@using MCServer.Services
+@implements IDisposable
+@inject GameServers GameServers
+@inject IServerHost ServerHost
+@inject PluginService Plugins
+@inject SettingsService SettingsStore
+@inject NavigationManager Nav
+@inject IDialogService DialogService
+
 <PageTitle>MCServer - Dashboard</PageTitle>
 
-<div>
+<MudGrid Spacing="3">
+    @* Header *@
+    <MudItem xs="12">
+        <MudPaper Elevation="2">
+            <MudStack Class="pa-4">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap">
+                    <div>
+                        <MudText Typo="Typo.h4">Server Management</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Manage your Minecraft servers and host system</MudText>
+                    </div>
+                    
+                    <MudSpacer/>
+                    
+                    <MudStack Row Breakpoint="Breakpoint.MdAndDown">
+                        <MudButton Variant="Variant.Outlined" Color="Color.Warning" StartIcon="@Icons.Filled.RestartAlt" OnClick="RestartComputer">
+                            Restart Computer
+                        </MudButton>
+                        <MudButton Variant="Variant.Filled" Color="Color.Error" StartIcon="@Icons.Filled.PowerSettingsNew" OnClick="ShutdownComputer">
+                            Shutdown
+                        </MudButton>
+                    </MudStack>
+                </MudStack>
+                <MudDivider />
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+    
+    <MudItem xs="12" sm="6" md="3">
+        <HostMetric Metric="HostMetricType.Cpu" Title="CPU" />
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <HostMetric Metric="HostMetricType.Memory" Title="Memory" />
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <HostMetric Metric="HostMetricType.Disk" Title="Disk" />
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <HostMetric Metric="HostMetricType.Network" Title="Network" ShowProgress="false" />
+    </MudItem>
+    
+    @* Summary cards *@
+    <MudItem xs="12" sm="6" md="3">
+        <MetricCard Title="Servers"
+                    DisplayValue="@Servers.Count.ToString()"
+                    Icon="@Icons.Filled.Dns"
+                    AvatarColor="Color.Primary" />
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MetricCard Title="Running"
+                    DisplayValue="@RunningServers.ToString()"
+                    Icon="@Icons.Filled.PlayArrow"
+                    AvatarColor="Color.Success" />
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MetricCard Title="Stopped"
+                    DisplayValue="@StoppedServers.ToString()"
+                    Icon="@Icons.Filled.Stop"
+                    AvatarColor="Color.Default" />
+    </MudItem>
+    @* <MudItem xs="12" sm="6" md="3"> *@
+    @*     <HostMetric Metric="HostMetricType.Cpu" Title="Host CPU" ShowCircular="true" ShowProgress="false" /> *@
+    @* </MudItem> *@
 
-</div>
+    @* Servers *@
+    <MudItem xs="12">
+        <MudPaper Elevation="2">
+            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="pa-4" Style="padding-left: 12px !important;">
+                <MudIconButton Icon="@Icons.Filled.Add" OnClick="AddServer"/>
+                <MudText Typo="Typo.h6">Servers</MudText>
+                <MudSpacer />
+                
+                <MudHidden Breakpoint="Breakpoint.MdAndDown">
+                    <MudStack Row Wrap="Wrap.Wrap" Justify="Justify.Center">
+                        <MudButton Variant="Variant.Outlined" Color="Color.Success" StartIcon="@Icons.Filled.PlayArrow" OnClick="StartSelected"
+                                   Disabled="@(SelectedServers.Count <= 0)">
+                            Start
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Warning" StartIcon="@Icons.Filled.RestartAlt" OnClick="RestartSelected"
+                                   Disabled="@(SelectedServers.Count <= 0)">
+                            Restart
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Filled.Stop" OnClick="StopSelected"
+                                   Disabled="@(SelectedServers.Count <= 0)">
+                            Stop
+                        </MudButton>
+                    </MudStack>
+                </MudHidden>
+                <MudHidden Breakpoint="Breakpoint.LgAndUp">
+                    <MudMenu Variant="Variant.Filled" AnchorOrigin="Origin.TopCenter" TransformOrigin="Origin.BottomCenter">
+                        <ActivatorContent>
+                            <div @onclick="@context.ToggleAsync">
+                                <MudBadge Origin="Origin.BottomRight" Overlap Color="Color.Info" Content="@SelectedServers.Count">
+                                    <MudIcon Icon="@Icons.Rounded.PowerSettingsNew"/>
+                                </MudBadge>
+                            </div>
+                        </ActivatorContent>
+                        <ChildContent>
+                            <MudMenuItem Icon="@Icons.Filled.PlayArrow" OnClick="StartSelected" IconColor="Color.Success"
+                                         Disabled="@(SelectedServers.Count <= 0)" Label="Start"/>
+                            <MudMenuItem Icon="@Icons.Filled.RestartAlt" OnClick="RestartSelected" IconColor="Color.Warning"
+                                         Disabled="@(SelectedServers.Count <= 0)" Label="Restart"/>
+                            <MudMenuItem Icon="@Icons.Filled.Stop" OnClick="StopSelected" IconColor="Color.Error"
+                                         Disabled="@(SelectedServers.Count <= 0)" Label="Stop"/>
+                        </ChildContent>
+                    </MudMenu>
+                </MudHidden>
+                
+                <MudCheckBox T="bool" Value="@AllServersSelected" ValueChanged="ToggleAllServers" Label="Select all" />
+                
+                <MudHidden Breakpoint="Breakpoint.MdAndDown">
+                    @if (SelectedServers.Count > 0)
+                    {
+                        <MudText Typo="Typo.body1" Align="Align.Center">
+                            (<b>@SelectedServers.Count</b>)
+                        </MudText>
+                    }
+                </MudHidden>
+            </MudStack>
+            <MudDivider />
 
-@code{
+            @if (Servers.Count == 0)
+            {
+                <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Class="pa-10">
+                    <MudIcon Icon="@Icons.Filled.Dns" Size="Size.Large" Color="Color.Secondary" />
+                    <MudText Typo="Typo.h6">No servers configured</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Add your first Minecraft server to get started.</MudText>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Filled.Add" OnClick="AddServer" Class="mt-2">
+                        Add Server
+                    </MudButton>
+                </MudStack>
+            }
+            else
+            {
+                <MudStack Spacing="0">
+                    @for (var i = 0; i < Servers.Count; i++)
+                    {
+                        var server = Servers[i];
+                        <ServerDashboardCard Server="server"
+                                             IsSelected="@SelectedServers.Contains(server)"
+                                             IsSelectedChanged="@(selected => ServerSelectionChanged(server, selected))"
+                                             OnStart="@(() => StartServer(server))"
+                                             OnStop="@(() => StopServer(server))"
+                                             OnRestart="@(() => RestartServer(server))"
+                                             OnManage="@(() => ManageServer(server))" />
+                        @if (i < Servers.Count - 1)
+                        {
+                            <MudDivider />
+                        }
+                    }
+                </MudStack>
+            }
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private static readonly TimeSpan StopDelay = TimeSpan.FromSeconds(10);
+
+    private readonly HashSet<IGameServer> _selectedServers = new();
+
+    private IReadOnlyList<IGameServer> Servers => GameServers;
+    private IReadOnlyCollection<IGameServer> SelectedServers => _selectedServers;
+
+    private int RunningServers => Servers.Count(server => server.ServerRunning);
+    private int StoppedServers => Servers.Count - RunningServers;
+
+    private bool AllServersSelected => Servers.Count > 0 && _selectedServers.Count == Servers.Count;
+
+    protected override void OnInitialized()
+    {
+        foreach (var server in Servers)
+            server.PropertyChanged += OnServerChanged;
+    }
+
+    public void Dispose()
+    {
+        foreach (var server in Servers)
+            server.PropertyChanged -= OnServerChanged;
+    }
+
+    private void OnServerChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) =>
+        _ = InvokeAsync(StateHasChanged);
+
+    private void PruneSelection() =>
+        _selectedServers.RemoveWhere(server => !GameServers.Contains(server));
+
+    private void ServerSelectionChanged(IGameServer server, bool selected)
+    {
+        if (selected)
+            _selectedServers.Add(server);
+        else
+            _selectedServers.Remove(server);
+    }
+
+    private void ToggleAllServers(bool selectAll)
+    {
+        PruneSelection();
+
+        if (selectAll)
+        {
+            foreach (var server in Servers)
+                _selectedServers.Add(server);
+        }
+        else
+        {
+            _selectedServers.Clear();
+        }
+    }
+
+    private void ClearSelection() => _selectedServers.Clear();
+
+    private void StartServer(IGameServer server)
+    {
+        try
+        {
+            if (!server.ServerRunning)
+                server.StartServer();
+        }
+        catch (Exception ex)
+        {
+            Program.NotifyUser($"Failed to start '{server.Settings.Name}': {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void StopServer(IGameServer server)
+    {
+        try
+        {
+            if (server.ServerRunning)
+                server.StopServer(StopDelay);
+        }
+        catch (Exception ex)
+        {
+            Program.NotifyUser($"Failed to stop '{server.Settings.Name}': {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void RestartServer(IGameServer server)
+    {
+        try
+        {
+            if (server.ServerRunning)
+                server.RestartServer(StopDelay);
+            else
+                server.StartServer();
+        }
+        catch (Exception ex)
+        {
+            Program.NotifyUser($"Failed to restart '{server.Settings.Name}': {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void ManageServer(IGameServer server) =>
+        Nav.NavigateTo($"/servers/{server.Settings.ID}");
+
+    private void StartSelected()
+    {
+        PruneSelection();
+        foreach (var server in _selectedServers.ToArray())
+            StartServer(server);
+    }
+
+    private void StopSelected()
+    {
+        PruneSelection();
+        foreach (var server in _selectedServers.ToArray())
+            StopServer(server);
+    }
+
+    private void RestartSelected()
+    {
+        PruneSelection();
+        foreach (var server in _selectedServers.ToArray())
+            RestartServer(server);
+    }
+
+    private async Task AddServer()
+    {
+        if (Plugins.ServerPlugins.Count == 0)
+        {
+            Program.NotifyUser("No server plugins installed. Install a plugin first.", Severity.Error);
+            return;
+        }
+
+        var parameters = new DialogParameters
+        {
+            { nameof(EditTextDialog.Value), $"Server {Servers.Count + 1}" },
+        };
+        var dialog = await DialogService.ShowAsync<EditTextDialog>("Add Server", parameters, new DialogOptions { CloseOnEscapeKey = true });
+        var result = await dialog.Result;
+        if (result is null || result.Canceled || result.Data is not string name || string.IsNullOrWhiteSpace(name))
+            return;
+
+        // TODO: let the user pick the server type when more than one plugin is installed.
+        var plugin = Plugins.ServerPlugins[0];
+        var settings = new ServerSettings
+        {
+            Name = name.Trim(),
+            Type = plugin.ServerType,
+        };
+
+        try
+        {
+            GameServers.Register(settings, ServerHost);
+            var created = GameServers.FindByID(settings.ID);
+            if (created is null)
+            {
+                Program.NotifyUser($"Server type '{settings.Type}' is not supported.", Severity.Error);
+                return;
+            }
+
+            created.PropertyChanged += OnServerChanged;
+            SettingsStore.Settings.ServerSettings.Add(settings);
+            SettingsStore.Save();
+            Program.NotifyUser($"Server '{settings.Name}' added.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Program.NotifyUser($"Failed to add server: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private Task RestartComputer() =>
+        ConfirmPowerAction("Restart", "restart", PowerService.PowerMode.Restart);
+
+    private Task ShutdownComputer() =>
+        ConfirmPowerAction("Shutdown", "shut down", PowerService.PowerMode.Shutdown);
+
+    private async Task ConfirmPowerAction(string title, string verb, PowerService.PowerMode mode)
+    {
+        var parameters = new DialogParameters
+        {
+            { nameof(ConfirmationDialog.Message), $"Are you sure you want to {verb} the host computer? All running servers will be stopped." },
+        };
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>(title, parameters, new DialogOptions { CloseOnEscapeKey = true });
+        var result = await dialog.Result;
+        if (result is null || result.Canceled)
+            return;
+
+        try
+        {
+            Program.NotifyUser($"Host is powering {verb}...", Severity.Info);
+            GameServers.Power(StopDelay, mode);
+        }
+        catch (Exception ex)
+        {
+            Program.NotifyUser($"Power action failed: {ex.Message}", Severity.Error);
+        }
+    }
 
 }
