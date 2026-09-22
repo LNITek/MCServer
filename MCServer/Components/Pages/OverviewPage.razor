@@ -1,9 +1,13 @@
 ﻿@page "/servers/{serverId}"
 @using System.Collections.ObjectModel
+@using MCServer.Components.Dialogs
+@using MCServer.Plugins
+@implements IDisposable
 @inject NavigationManager Nav
 @inject IDialogService DialogService
 @inject GameServers GameServers
-@* @inject ProcessMetricsService MetricsService *@
+@inject PluginService Plugins
+@inject SettingsService Settings
 @inject IJSRuntime JS
 
 <PageTitle>MCServer - Overview</PageTitle>
@@ -33,39 +37,62 @@
             <!-- Navigation -->
             <MudItem xs="6" md="10">
                 <MudHidden Breakpoint="Breakpoint.MdAndDown">
-                    <MudStack Row="true">
+                    <MudStack Row="true" Wrap="Wrap.Wrap">
+                        <MudTooltip Text="Documentation">
+                            <MudMenu Icon="@Icons.Filled.Source" Variant="Variant.Outlined">
+                                @foreach (var docFile in Server.DocFiles)
+                                {
+                                    <MudMenuItem Href="@($"/docs/{Server.Settings.ID}/{docFile.Slug}")"
+                                                 Icon="@docFile.Icon">
+                                        @docFile.Title
+                                    </MudMenuItem>
+                                }
+                            </MudMenu>
+                        </MudTooltip>
                         <MudButton Href="@($"/servers/{Server.Settings.ID}/console")" Variant="Variant.Outlined" StartIcon="@Icons.Filled.Terminal">Console</MudButton>
-                        <MudButton Href="@($"/servers/{Server.Settings.ID}/props")" Variant="Variant.Outlined" StartIcon="@Icons.Filled.HomeRepairService">Properties</MudButton>
-                        <MudButton Href="@($"/servers/{Server.Settings.ID}/player-settings")" Variant="Variant.Outlined" StartIcon="@Icons.Filled.Terminal">Player Settings</MudButton>
-                        <MudButton Href="@($"/servers/{Server.Settings.ID}/packets")" Variant="Variant.Outlined" StartIcon="@Icons.Filled.Backpack">Packet Configs</MudButton>
                         <MudButton Href="@($"/servers/{Server.Settings.ID}/schedules")" Variant="Variant.Outlined" StartIcon="@Icons.Filled.Timer">Schedules</MudButton>
+                        @foreach (var serverPage in _serverPages)
+                        {
+                            <MudButton Href="@($"/servers/{Server.Settings.ID}/p/{serverPage.Slug}")" Variant="Variant.Outlined" StartIcon="@serverPage.Icon">@serverPage.Title</MudButton>
+                        }
                     </MudStack>
                 </MudHidden>
                 <MudHidden Breakpoint="Breakpoint.LgAndUp">
                     <div style="justify-content: start; display: flex;">
-                        <MudButtonGroup Color="Color.Primary" Variant="Variant.Outlined">
-                            <MudButton Style="width: 100%;">Menus</MudButton>
-                            <MudMenu Icon="@Icons.Filled.ArrowDropDown" Style="align-self: auto;">
-                                <MudMenuItem Href="@($"/servers/{Server.Settings.ID}/console")" Icon="@Icons.Filled.Terminal">Console</MudMenuItem>
-                                <MudMenuItem Href="@($"/servers/{Server.Settings.ID}/props")" Icon="@Icons.Filled.HomeRepairService">Properties</MudMenuItem>
-                                <MudMenuItem Href="@($"/servers/{Server.Settings.ID}/player-settings")" Icon="@Icons.Filled.Terminal">Player Settings</MudMenuItem>
-                                <MudMenuItem Href="@($"/servers/{Server.Settings.ID}/packets")" Icon="@Icons.Filled.Backpack">Packet Configs</MudMenuItem>
-                                <MudMenuItem Href="@($"/servers/{Server.Settings.ID}/schedules")" Icon="@Icons.Filled.Timer">Schedules</MudMenuItem>
+                        <MudMenu Label="Menus" EndIcon="@Icons.Filled.ArrowDropDown" Variant="Variant.Outlined"
+                                 AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+                            <MudMenu StartIcon="@Icons.Filled.Source" Label="Documentation">
+                                @foreach (var docFile in Server.DocFiles)
+                                {
+                                    <MudMenuItem Href="@($"/docs/{Server.Settings.ID}/{docFile.Slug}")"
+                                                 Icon="@docFile.Icon">
+                                        @docFile.Title
+                                    </MudMenuItem>
+                                }
                             </MudMenu>
-                        </MudButtonGroup>
+                            <MudMenuItem Href="@($"/servers/{Server.Settings.ID}/console")" Icon="@Icons.Filled.Terminal">Console</MudMenuItem>
+                            <MudMenuItem Href="@($"/servers/{Server.Settings.ID}/schedules")" Icon="@Icons.Filled.Timer">Schedules</MudMenuItem>
+                            @foreach (var serverPage in _serverPages)
+                            {
+                                <MudMenuItem Href="@($"/servers/{Server.Settings.ID}/p/{serverPage.Slug}")" Icon="@serverPage.Icon">@serverPage.Title</MudMenuItem>
+                            }
+                        </MudMenu>
                     </div>
                 </MudHidden>
             </MudItem>
             <MudItem xs="6" md="2">
                 <div style="justify-content: end; display: flex;">
-                    <MudButtonGroup Color="Color.Primary" Variant="Variant.Filled">
-                        <MudButton Style="width: 100%;">Commands</MudButton>
-                        <MudMenu Icon="@Icons.Filled.ArrowDropDown" Style="align-self: auto;">
-                        </MudMenu>
-                    </MudButtonGroup>
+                    <MudMenu Label="Commands" Color="Color.Primary" EndIcon="@Icons.Filled.ArrowDropDown" Variant="Variant.Filled"
+                             AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                        <MudMenuItem IconColor="Color.Error" Icon="@Icons.Filled.Delete" OnClick="DeleteServer">
+                            Delete Server
+                        </MudMenuItem>
+                        
+                        <CommandMenu Commands="@Server.Commands" OnExecute="@RunDisplayCommand"/>
+                    </MudMenu>
                 </div>
             </MudItem>
-            
+
             <!-- Header -->
             <MudItem xs="12">
                 <MudPaper Class="pa-4">
@@ -73,15 +100,15 @@
                         <div>
                             <MudText Typo="Typo.h5" @ondblclick="EditServerName">@Server.Settings.Name</MudText>
                             <MudText Typo="Typo.body2" Color="Color.Secondary">
-                                @Server.Settings.Version
+                                @Server.Settings.Type | @Server.Settings.Version
                             </MudText>
                         </div>
 
                         <div class="text-right">
                             <MudChip T="string"
-                                     Color="@Server.ServerStatus.inticator"
+                                     Color="@Server.ServerStatus.Indicator"
                                      Variant="Variant.Filled">
-                                @Server.ServerStatus.status
+                                @Server.ServerStatus.Status
                             </MudChip>
 
                             <TimerLable StartedTime="@Server.StartupDate" Label="Uptime: " Class="mt-1"/>
@@ -91,46 +118,34 @@
             </MudItem>
 
             <!-- Top metric cards -->
-            <MudItem xs="12" sm="6" md="3">
-                <ProcessMetric Process="@Server.ServerProcess"
-                               Metric="ProcessMetricType.Cpu"
-                               Title="CPU"/>
-                @* @bind-Value="@MetricValues[ProcessMetricType.Cpu]" *@
-            </MudItem>
+            @if (Server.ServerProcess is not null)
+            {
+                <MudItem xs="12" sm="6" md="3">
+                    <ProcessMetric Process="@Server.ServerProcess"
+                                   Metric="ProcessMetricType.Cpu"
+                                   Title="CPU"/>
+                </MudItem>
 
-            <MudItem xs="12" sm="6" md="3">
-                <ProcessMetric Process="@Server.ServerProcess"
-                               Metric="ProcessMetricType.Memory"
-                               Title="Memory"/>
-                @* @bind-Value="@MetricValues[ProcessMetricType.Memory]" *@
-            </MudItem>
+                <MudItem xs="12" sm="6" md="3">
+                    <ProcessMetric Process="@Server.ServerProcess"
+                                   Metric="ProcessMetricType.Memory"
+                                   Title="Memory"/>
+                </MudItem>
 
-            <MudItem xs="12" sm="6" md="3">
-                <ProcessMetric Process="@Server.ServerProcess"
-                               Metric="ProcessMetricType.DiskRead"
-                               Title="Disk Read"
-                               ShowProgress="false"/>
-                @* @bind-Value="@MetricValues[ProcessMetricType.DiskRead]" *@
-            </MudItem>
+                <MudItem xs="12" sm="6" md="3">
+                    <ProcessMetric Process="@Server.ServerProcess"
+                                   Metric="ProcessMetricType.DiskRead"
+                                   Title="Disk Read"
+                                   ShowProgress="false"/>
+                </MudItem>
 
-            <MudItem xs="12" sm="6" md="3">
-                <ProcessMetric Process="@Server.ServerProcess"
-                               Metric="ProcessMetricType.DiskWrite"
-                               Title="Disk Write"
-                               ShowProgress="false"/>
-                @* @bind-Value="@MetricValues[ProcessMetricType.DiskWrite]" *@
-            </MudItem>
-
-            <!-- Performance graph -->
-            @* <MudItem xs="12"> *@
-            @*     <MudPaper Class="pa-4 dashboard-chart"> *@
-            @*         <MudText Typo="Typo.h6">Server Performance</MudText> *@
-            @* *@
-            @*         <MudChart ChartType="ChartType.Timeseries" MatchBoundsToSize="true" *@
-            @*                   ChartSeries="@MetricChart" *@
-            @*                   ChartOptions="@ChartOptions" /> *@
-            @*     </MudPaper> *@
-            @* </MudItem> *@
+                <MudItem xs="12" sm="6" md="3">
+                    <ProcessMetric Process="@Server.ServerProcess"
+                                   Metric="ProcessMetricType.DiskWrite"
+                                   Title="Disk Write"
+                                   ShowProgress="false"/>
+                </MudItem>
+            }
 
             <!-- Player activity -->
             <MudItem xs="12">
@@ -152,34 +167,44 @@
                 <MudPaper Class="pa-3">
                     <MudExpansionPanel>
                         <TitleContent>
-                            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                                <MudIcon Icon="@Icons.Filled.Error" Color="Color.Error"/>
-                                <MudText Color="Color.Error">
-                                    @ErrorCount
-                                </MudText>
-                                <MudText Color="Color.Error">
-                                    Errors
-                                </MudText>
-                                
-                                <MudDivider Vertical="true"/>
-                                
-                                <MudIcon Icon="@Icons.Filled.Warning" Color="Color.Warning"/>
-                                <MudText Color="Color.Warning">
-                                    @WarningCount
-                                </MudText>
-                                <MudText Color="Color.Warning">
-                                    Warnings
-                                </MudText>
-                                
-                                <MudDivider Vertical="true"/>
-                                
-                                <MudIcon Icon="@Icons.Filled.Info" Color="Color.Info"/>
-                                <MudText Color="Color.Info">
-                                    @InfoCount
-                                </MudText>
-                                <MudText Color="Color.Info">
-                                    Status
-                                </MudText>
+                            <MudStack Row Spacing="2" Breakpoint="Breakpoint.SmAndDown">
+                                <MudStack Row Spacing="2">
+                                    <MudIcon Icon="@Icons.Filled.Error" Color="Color.Error"/>
+                                    <MudText Color="Color.Error">
+                                        @ErrorCount
+                                    </MudText>
+                                    <MudText Color="Color.Error">
+                                        Errors
+                                    </MudText>
+                                </MudStack>
+
+                                <MudHidden Breakpoint="Breakpoint.SmAndDown">
+                                    <MudDivider Vertical="true" FlexItem="true"/>
+                                </MudHidden>
+
+                                <MudStack Row Spacing="2">
+                                    <MudIcon Icon="@Icons.Filled.Warning" Color="Color.Warning"/>
+                                    <MudText Color="Color.Warning">
+                                        @WarningCount
+                                    </MudText>
+                                    <MudText Color="Color.Warning">
+                                        Warnings
+                                    </MudText>
+                                </MudStack>
+
+                                <MudHidden Breakpoint="Breakpoint.MdAndDown">
+                                    <MudDivider Vertical="true" FlexItem="true"/>
+                                </MudHidden>
+
+                                <MudStack Row Spacing="2">
+                                    <MudIcon Icon="@Icons.Filled.Info" Color="Color.Info"/>
+                                    <MudText Color="Color.Info">
+                                        @InfoCount
+                                    </MudText>
+                                    <MudText Color="Color.Info">
+                                        Status
+                                    </MudText>
+                                </MudStack>
                             </MudStack>
                         </TitleContent>
                         <ChildContent>
@@ -200,17 +225,30 @@
         </MudGrid>
     </div>
 }
+else
+{
+    <PageLoading Text="Loading server..." />
+}
 
 @code {
     [Parameter] public string serverId { get; set; } = "";
-    public MCBedrockServer Server { get; set; }
+    public IGameServer Server { get; set; } = null!;
+    private List<ServerPageDefinition> _serverPages = [];
+    private System.ComponentModel.PropertyChangedEventHandler? _propertyHandler;
 
-    public Timer ChartTimer;
+    public void Dispose()
+    {
+        if (Server is not null && _propertyHandler is not null)
+            Server.PropertyChanged -= _propertyHandler;
+        ChartTimer?.Dispose();
+    }
+
+    public Timer ChartTimer = null!;
 
     public Action<object?> UpdateCharts = (sender) =>
     {
         if (sender is not OverviewPage This) return;
-        PushValue(This.PlayerCount_History, This.Server.PlayerList.Count);
+        PushValue(This.PlayerCount_History, This.Server.PlayerCount);
         This.InvokeAsync(This.StateHasChanged);
     };
 
@@ -218,7 +256,7 @@
     public int[] PlayerCount_History = new int[24];
 
     ObservableCollection<ConsoleLine> StatusList = [];
-    public ExList<ConsoleLine> StatusLines { get; set; }
+    public ExList<ConsoleLine> StatusLines { get; set; } = new([]);
     public int ErrorCount => StatusList.Count(x => x.Type is ConsoleLineType.Error);
     public int WarningCount => StatusList.Count(x => x.Type is ConsoleLineType.Warning);
     public int InfoCount => StatusList.Count(x => x.Type is ConsoleLineType.Status);
@@ -227,13 +265,18 @@
     {
         if (firstRender)
         {
-            if (GameServers.FindByID(serverId) is not MCBedrockServer server)
+            var server = GameServers.FindByID(serverId);
+            if (server is null)
             {
                 Nav.NavigateTo("\\not-found");
                 return;
             }
 
             Server = server;
+            _serverPages = Plugins.GetPages(Server).ToList();
+            _propertyHandler = (_, _) => InvokeAsync(StateHasChanged);
+            Server.PropertyChanged += _propertyHandler;
+
             PlayerChart.AddRange([
                 new()
                 {
@@ -243,22 +286,10 @@
                 }
             ]);
 
-            // MetricChart.AddRange([
-            //     new()
-            //     {
-            //         Name = "CPU",
-            //         Data = CPU_History,
-            //         Visible = true,
-            //     }
-            // ]);
-
-            //MetricsService.Register(Server.ServerProcess);
-            //MetricsService.MetricsUpdated += OnMetricsUpdated;
-            //UpdateValue();
-
             MetricValues.First().NewValuePushed += (s, e) => InvokeAsync(StateHasChanged);
             Server.OutputList.CollectionChanged += (s, e) =>
             {
+                if (e.NewItems is null) return;
                 var newErrors = e.NewItems.OfType<ConsoleLine>().Where(x => x.Type is ConsoleLineType.Error or ConsoleLineType.Warning or ConsoleLineType.Status);
                 if (newErrors.Any())
                 {
@@ -271,7 +302,7 @@
             StatusLines = new(StatusList);
             StatusLines.SetSort((a, b) => b.DateTime.CompareTo(a.DateTime));
             StatusList.AddRange(Server.OutputList.Where(x => x.Type is ConsoleLineType.Error or ConsoleLineType.Warning or ConsoleLineType.Status));
-            
+
             StateHasChanged();
         }
 
@@ -280,8 +311,55 @@
         UpdateCharts(this);
     }
 
+    private void RunDisplayCommand(ServerCommand command)
+    {
+        Server.RunCommand(command.Name);
+    }
+
+    private async Task DeleteServer()
+    {
+        if (Server is null) return;
+
+        if (Server.ServerRunningStatus)
+        {
+            Program.NotifyUser("Stop the server before deleting it.", Severity.Error);
+            return;
+        }
+
+        var parameters = new DialogParameters
+        {
+            { nameof(ConfirmationDialog.Message), "Are you sure you want to delete the server? Everything under the server path will be deleted!\r\nThis action can not be undone!" },
+            { nameof(ConfirmationDialog.ValidateKey), Server.Settings.ID },
+        };
+        var options = new DialogOptions { CloseOnEscapeKey = true,  };
+
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Delete - " + Server.Settings.Name, parameters, options);
+        var result = await dialog.Result;
+        if (result is null || result.Canceled) return;
+
+        try
+        {
+            if (_propertyHandler is not null)
+                Server.PropertyChanged -= _propertyHandler;
+            _propertyHandler = null;
+
+            Server.Delete();
+            GameServers.Unregister(Server);
+            Settings.RemoveServer(Server.Settings.ID);
+            Program.NotifyUser($"Server '{Server.Settings.Name}' deleted.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Program.NotifyUser($"Delete failed: {ex.Message}", Severity.Error);
+            return;
+        }
+
+        Nav.NavigateTo("/");
+    }
+    
     private async Task EditServerName()
-    {var parameters = new DialogParameters
+    {
+        var parameters = new DialogParameters
         {
             { nameof(EditTextDialog.Value), Server.Settings.Name }
         };
@@ -296,11 +374,19 @@
 
         if (!result.Canceled && result.Data is string newValue)
         {
-            Server.Settings.Name = newValue;
+            if (string.IsNullOrWhiteSpace(newValue))
+            {
+                Program.NotifyUser("Server name cannot be empty.", Severity.Error);
+                return;
+            }
+
+            Server.Settings.Name = newValue.Trim();
+            Settings.Save();
+            Program.NotifyUser("Server name saved.", Severity.Success);
             InvokeAsync(StateHasChanged);
         }
     }
-    
+
     public ProcessMetricsList MetricValues { get; set; } =
     [
         new(ProcessMetricType.Cpu),
@@ -308,10 +394,6 @@
         new(ProcessMetricType.DiskRead),
         new(ProcessMetricType.DiskWrite),
     ];
-
-    //private ProcessMetricsSnapshot? _snapshot;
-
-    //private List<ChartSeries<double>> MetricChart = new();
 
     private readonly TimeSeriesChartOptions ChartOptions = new()
     {
@@ -332,37 +414,4 @@
         Array.Copy(arr, 1, arr, 0, arr.Length - 1);
         arr[^1] = newValue;
     }
-
-    // private void OnMetricsUpdated(object? sender, ProcessMetricsSnapshot snapshot)
-    // {
-    //     try
-    //     {
-    //         if (snapshot.ProcessId != Server.ServerProcess.Id)
-    //             return;
-    //     }
-    //     catch
-    //     {
-    //         return;
-    //     }
-    //
-    //     _snapshot = snapshot;
-    //     UpdateValue();
-    //     _ = InvokeAsync(StateHasChanged);
-    // }
-    //
-    // private void UpdateValue()
-    // {
-    //     if(_snapshot == null) return;
-    //     foreach (var metricValue in MetricValues)
-    //         MetricValues[metricValue.Metric] = (metricValue.Metric) switch
-    //         {
-    //             ProcessMetricType.Cpu => _snapshot.CpuPercent,
-    //             ProcessMetricType.Memory => _snapshot.WorkingSetBytes,
-    //             ProcessMetricType.DiskRead => _snapshot.DiskReadBytesPerSecond,
-    //             ProcessMetricType.DiskWrite => _snapshot.DiskWriteBytesPerSecond,
-    //             _ => 0,
-    //         };
-    //     
-    //     InvokeAsync(StateHasChanged);
-    // }
 }
