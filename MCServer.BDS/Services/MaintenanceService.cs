@@ -3,6 +3,7 @@ using System.IO.Compression;
 using System.Text;
 using System.Text.Json;
 using ExtraFunctions.Extras;
+using MCServer.BDS.Models;
 using MCServer.Plugins;
 using MudBlazor;
 
@@ -148,6 +149,64 @@ public static class MaintenanceService
             .Replace("{ServerName}", server.Settings.Name)
             .Replace("{ServerID}", server.Settings.ID)
             .Replace("{WorldName}", WorldName);
+    }
+    #endregion
+
+    #region Trim World
+    /// <summary>
+    /// Trims chunks outside the keep-area for one dimension. Offline-only:
+    /// refuses while the server runs and takes a backup first (unless dry-run
+    /// or backup disabled). Only chunk keys are deleted; global keys are kept.
+    /// </summary>
+    public static void TrimServer(this BedrockServer server, TrimOptions options)
+    {
+        BedrockProcessService.CreateThread(async () =>
+        {
+            if (!options.DryRun && options.CreateBackup)
+                await BackupStoppedTask(server, options.WorldName);
+            await TrimTask(server, options);
+        });
+    }
+
+    internal static async Task TrimTask(BedrockServer server, TrimOptions options)
+    {
+        server.CommandQue.WaitOne();
+        var Timer = DateTime.Now;
+        try
+        {
+            server.CommandRunning = true;
+            var activeWorld = server.GetProperties().FirstOrDefault(x => x.Name == "level-name")?.Value;
+            if (server.ServerRunning && string.Equals(activeWorld, options.WorldName, StringComparison.OrdinalIgnoreCase))
+            {
+                server.Host.NotifyUser($"Trim: stop the server before trimming the active world '{options.WorldName}'.", Severity.Error);
+                return;
+            }
+
+            var action = options.DryRun ? "Scanning" : "Trimming";
+            server.WriteDisplayLine($"{action} '{options.WorldName}' [{options.Dimension}] keep {options.Describe()}...");
+            var progress = new Progress<double>(p => server.Progress = p * 100);
+            var result = options.DryRun
+                ? await server.ScanAsync(options, progress)
+                : await server.TrimAsync(options, progress);
+
+            var Time = DateTime.Now - Timer;
+            server.WriteDisplayLine(
+                $"{action} {(options.DryRun ? "scan" : "complete")} in ({Time}): " +
+                $"scanned {result.ScannedKeys} keys, {result.ChunkKeysInDimension} in {result.Dimension}; " +
+                $"{(options.DryRun ? "would delete" : "deleted")} {result.DeletedKeys} keys " +
+                $"({result.DistinctChunksDeleted} chunks), kept {result.DistinctChunksKept} chunks.");
+        }
+        catch (Exception ex)
+        {
+            server.WriteDisplayLine($"Trim failed: {ex.Message}", ConsoleLineType.Error);
+            server.Host.NotifyUser($"Trim failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            server.Progress = null;
+            server.CommandRunning = false;
+            server.CommandQue.Release();
+        }
     }
     #endregion
 

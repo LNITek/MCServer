@@ -51,7 +51,7 @@ TODO
 | Documentation Viewer					           | :heavy_check_mark:	     | :x:					|
 | Dynamic DNS Manager					            | :x:					                | :x:					|
 | Resource / Behavior Packs Manager		 | :x:					                | :x:					|
-| World Trim							                   | :x:					                | :x:					|
+| World Trim							                   | :heavy_check_mark:					                | :x:					|
 | World Export							                 | :x:					                | :x:					|
 | World Backup System					            | :heavy_check_mark:					                | :x:					|
 | Schedule System						               | :wavy_dash:			          | :x:					|

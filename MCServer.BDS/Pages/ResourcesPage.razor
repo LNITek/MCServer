@@ -1,4 +1,5 @@
 @using System.ComponentModel
+@using MCServer.BDS.Models
 @using MCServer.BDS.Services
 @using MCServer.Plugins
 @using MCServer.BDS.Dialogs
@@ -96,6 +97,11 @@
                     <MudMenuItem Label=".tar.gz" OnClick="@(() => ExportWorld(WorldArchiveFormat.TarGz))" />
                     <MudMenuItem Label=".mcworld" OnClick="@(() => ExportWorld(WorldArchiveFormat.McWorld))" />
                 </MudMenu>
+
+                <MudTooltip Text="Trim chunks">
+                    <MudIconButton Color="Color.Warning" Icon="@Icons.Rounded.Crop" OnClick="TrimWorld_Click"
+                                   Disabled="@(Busy || (SelectedWorld?.Name == ActiveWorldName && Server.ServerRunningStatus))" />
+                </MudTooltip>
                 
                 <MudIconButton Color="Color.Error" Icon="@Icons.Rounded.Delete" OnClick="DeleteWorld_Click" 
                                Disabled="@(Busy || (SelectedWorld?.Name == ActiveWorldName && Server.ServerRunningStatus))" />
@@ -292,6 +298,47 @@
             Snackbar.Add($"Delete failed: {ex.Message}", Severity.Error);
         }
         Refresh();
+    }
+
+    private async Task TrimWorld_Click()
+    {
+        if (SelectedWorld is null || Busy) return;
+        var parameters = new DialogParameters
+        {
+            { nameof(TrimWorldDialog.WorldName), SelectedWorld.Name },
+        };
+        var dialog = await DialogService.ShowAsync<TrimWorldDialog>(
+            $"Trim {SelectedWorld.Name}", parameters, new DialogOptions { CloseOnEscapeKey = true });
+        var result = await dialog.Result;
+        if (result.Canceled || result.Data is not TrimOptions trim) return;
+
+        if (trim.DryRun)
+        {
+            Busy = true;
+            BusyMessage = $"Scanning {trim.WorldName}...";
+            try
+            {
+                var scan = await Bedrock.ScanAsync(trim);
+                Snackbar.Add(
+                    $"Scan [{scan.Dimension}] keep {scan.KeepArea}: would delete {scan.DeletedKeys} keys " +
+                    $"({scan.DistinctChunksDeleted} chunks), keep {scan.DistinctChunksKept} chunks.",
+                    Severity.Info);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Trim scan failed: {ex.Message}", Severity.Error);
+            }
+            finally
+            {
+                Busy = false;
+                StateHasChanged();
+            }
+        }
+        else
+        {
+            Bedrock.TrimServer(trim);
+            Snackbar.Add($"Trim of {trim.WorldName} started — watch the console for progress.", Severity.Warning);
+        }
     }
 
     private void SetLevelName(string name)

@@ -1,0 +1,94 @@
+@using MCServer.BDS.Models
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3" Style="min-width:320px;">
+            <MudAlert Severity="Severity.Warning" Variant="Variant.Text" Dense>
+                Trimming <b>@WorldName</b> deletes chunks outside the keep-area.
+                A backup is taken first. The active world can only be trimmed while the server is stopped.
+            </MudAlert>
+
+            <MudSelect @bind-Value="_dimension" Label="Dimension" Variant="Variant.Outlined" Dense>
+                <MudSelectItem Value="BedrockDimension.Overworld">Overworld</MudSelectItem>
+                <MudSelectItem Value="BedrockDimension.Nether">Nether</MudSelectItem>
+                <MudSelectItem Value="BedrockDimension.End">End</MudSelectItem>
+            </MudSelect>
+
+            <MudRadioGroup @bind-Value="_mode">
+                <MudRadio Value="TrimMode.Rect">Rectangle</MudRadio>
+                <MudRadio Value="TrimMode.Radius">Radius</MudRadio>
+            </MudRadioGroup>
+
+            @if (_mode == TrimMode.Rect)
+            {
+                <MudText Typo="Typo.caption">Keep chunks inside this rectangle (chunk coordinates = block &divide; 16).</MudText>
+                <MudStack Row Spacing="2">
+                    <MudNumericField @bind-Value="_minX" Label="Min X" Variant="Variant.Outlined" />
+                    <MudNumericField @bind-Value="_minZ" Label="Min Z" Variant="Variant.Outlined" />
+                </MudStack>
+                <MudStack Row Spacing="2">
+                    <MudNumericField @bind-Value="_maxX" Label="Max X" Variant="Variant.Outlined" />
+                    <MudNumericField @bind-Value="_maxZ" Label="Max Z" Variant="Variant.Outlined" />
+                </MudStack>
+            }
+            else
+            {
+                <MudText Typo="Typo.caption">Keep chunks around a center chunk (chunk coordinates = block &divide; 16).</MudText>
+                <MudStack Row Spacing="2">
+                    <MudNumericField @bind-Value="_cx" Label="Center X" Variant="Variant.Outlined" />
+                    <MudNumericField @bind-Value="_cz" Label="Center Z" Variant="Variant.Outlined" />
+                </MudStack>
+                <MudNumericField @bind-Value="_radius" Label="Radius (chunks)" Variant="Variant.Outlined" Min="0" />
+                <MudCheckBox @bind-Value="_circular" Label="Circular (otherwise square)" Dense />
+            }
+
+            <MudCheckBox @bind-Value="_createBackup" Label="Create backup before trimming" Dense />
+        </MudStack>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Info" OnClick="Scan">Scan</MudButton>
+        <MudButton Color="Color.Warning" Variant="Variant.Filled" OnClick="Trim">Trim</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public string WorldName { get; set; } = "";
+
+    [Parameter]
+    public BedrockDimension Dimension { get; set; } = BedrockDimension.Overworld;
+
+    private BedrockDimension _dimension = BedrockDimension.Overworld;
+    private TrimMode _mode = TrimMode.Radius;
+    private int _minX = -32;
+    private int _minZ = -32;
+    private int _maxX = 32;
+    private int _maxZ = 32;
+    private int _cx;
+    private int _cz;
+    private int _radius = 32;
+    private bool _circular;
+    private bool _createBackup = true;
+
+    protected override void OnInitialized()
+    {
+        _dimension = Dimension;
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Scan() => MudDialog.Close(DialogResult.Ok(BuildOptions(dryRun: true)));
+
+    private void Trim() => MudDialog.Close(DialogResult.Ok(BuildOptions(dryRun: false)));
+
+    private TrimOptions BuildOptions(bool dryRun) => _mode switch
+    {
+        TrimMode.Rect => TrimOptions.FromRect(WorldName, _dimension, _minX, _minZ, _maxX, _maxZ, dryRun, _createBackup),
+        _ => TrimOptions.FromRadius(WorldName, _dimension, _cx, _cz, Math.Max(0, _radius), _circular, dryRun, _createBackup),
+    };
+}
