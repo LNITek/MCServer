@@ -1,7 +1,10 @@
 <MudDialog>
+    <TitleContent>
+        @Progress.ToString()
+    </TitleContent>
     <DialogContent>
-        <MudText>@Title</MudText>
-        <MudProgressLinear Value="@Progress"/>
+        <MudProgressLinear Value="@Progress.Value" Indeterminate="@Progress.Loading" 
+                           Rounded Max="100" Min="0" Color="Color.Primary"/>
     </DialogContent>
 </MudDialog>
 
@@ -10,9 +13,7 @@
     private IMudDialogInstance MudDialog { get; set; }
 
     [Parameter]
-    public string Title { get; set; }
-    [Parameter]
-    public double Progress { get; set; }
+    public ProgressDisplay Progress { get; set; }
     
     public void Finished() => MudDialog.Close();
 }

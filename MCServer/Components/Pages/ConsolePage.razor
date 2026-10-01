@@ -11,15 +11,6 @@
 
 @if (Server is not null)
 {
-    <MudOverlay Visible="@(Server.Progress != null)">
-        <div class="d-flex flex-column align-center justify-start" style="height:100%;">
-            <MudPaper Class="pa-4">
-                <MudText Align="Align.Center" Class="mb-2">Processing... @(Server.Progress ?? 0)%</MudText>
-                <MudProgressLinear Value="@(Server.Progress ?? 0)" Max="100" Min="0" Color="Color.Primary" Style="width:300px"/>
-            </MudPaper>
-        </div>
-    </MudOverlay>
-
     <MudHidden Breakpoint="Breakpoint.LgAndUp" Invert="true">
         <MudStack Spacing="3" Row="true" Wrap="Wrap.Wrap">
             <CommandButtons Commands="@Server.Commands" OnExecute="@RunDisplayCommand" />
@@ -80,6 +71,14 @@
             };
             _propertyHandler = async (s, e) =>
             {
+                if(e.PropertyName == nameof(IGameServer.Progress))
+                    if (server.Progress.Open)
+                    {
+                        var options = new DialogOptions() { Position = DialogPosition.TopCenter, BackdropClick = false, MaxWidth = MaxWidth.Medium };
+                        var args = new DialogParameters<ProgressDialog> { { x => x.Progress, server.Progress } };
+                        _ = Dialog.ShowAsync<ProgressDialog>(args, options);
+                    }
+                
                 await InvokeAsync(StateHasChanged);
             };
             Server.OutputList.CollectionChanged += _outputHandler;

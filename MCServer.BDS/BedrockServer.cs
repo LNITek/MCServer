@@ -43,8 +43,7 @@ public partial class BedrockServer : INotifyPropertyChanged, IGameServer
     public Semaphore CommandQue = new(1, 1);
     private IntPtr _jobHandle = IntPtr.Zero;
 
-    [NotifyChanged]
-    double? progress { get; set; } = null;
+    public ProgressDisplay Progress { get; } = new();
 
     public ObservableCollection<Schedule> ServerSchedules { get; } = [];
     public ObservableCollection<Player> PlayerList { get; set; } = [];
@@ -70,6 +69,9 @@ public partial class BedrockServer : INotifyPropertyChanged, IGameServer
                     break;
             }
         };
+
+        Progress.PropertyChanged += (_, _) => NotifyPropertyChanged(nameof(Progress));
+        Progress.Show("Test", true);
 
         DocFiles =
         [

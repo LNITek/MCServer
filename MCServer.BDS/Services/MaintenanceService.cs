@@ -183,8 +183,9 @@ public static class MaintenanceService
             }
 
             var action = options.DryRun ? "Scanning" : "Trimming";
+            server.Progress.Show($"{action} '{options.WorldName}' [{options.Dimension}] keep {options.Describe()}...", 0);
             server.WriteDisplayLine($"{action} '{options.WorldName}' [{options.Dimension}] keep {options.Describe()}...");
-            var progress = new Progress<double>(p => server.Progress = p * 100);
+            var progress = new Progress<double>(p => server.Progress.Value = p);
             var result = options.DryRun
                 ? await server.ScanAsync(options, progress)
                 : await server.TrimAsync(options, progress);
@@ -203,7 +204,7 @@ public static class MaintenanceService
         }
         finally
         {
-            server.Progress = null;
+            server.Progress.Hide();
             server.CommandRunning = false;
             server.CommandQue.Release();
         }
@@ -219,9 +220,12 @@ public static class MaintenanceService
     internal static async Task UpdateTask(BedrockServer server)
     {
         string[] FilesToBackup = ["server.properties", "allowlist.json", "permissions.json"];
+        string[] FoldersToTrim = ["behavior_packs", "config", "data", "definitions", "resource_packs"];
         server.CommandQue.WaitOne();
 
         server.CommandRunning = true;
+
+        server.Progress.Show("Checking Update Version...", true);
         server.WriteDisplayLine("Checking Update Version...");
         var restartServer = false;
         using var httpClient = new HttpClient() { Timeout = TimeSpan.FromSeconds(10) };
@@ -275,6 +279,7 @@ public static class MaintenanceService
 
         server.CommandRunning = true;
 
+        server.Progress.Show("Backing up config files", true);
         var BackupFolder = Path.Combine(server.ServerPath, "Backup");
         Directory.CreateDirectory(BackupFolder);
 
@@ -285,31 +290,43 @@ public static class MaintenanceService
             if (File.Exists(path)) File.Copy(path, Path.Combine(BackupFolder, Item), true);
         }
 
+        server.Progress.Show("DOWNLOADING: " + FileName, 0);
         server.WriteDisplayLine("DOWNLOADING: " + FileName);
 
-        server.WriteDisplayLine($"Progress: [{GenerateProgress(0)}] 0%");
+        //server.WriteDisplayLine($"Progress: [{GenerateProgress(0)}] 0%");
         using var client = new HttpClient() { Timeout = TimeSpan.FromMinutes(10), };
         using var file = await client.DownloadAsync(URL, new Progress<double>(I =>
         {
-            server.Progress = I * 100;
+            server.Progress.Value = I;
         }));
-        server.Progress = 100;
 
+        server.Progress.Show("UPDATING SERVER FILES...", true);
         server.WriteDisplayLine("UPDATING SERVER FILES...");
-        server.Progress = 0;
 
         var UpdatePath = Path.Combine(server.ServerPath, "Downloads", type, FileName);
         if (Directory.Exists(UpdatePath)) Directory.Delete(UpdatePath, true);
         else Directory.CreateDirectory(UpdatePath);
 
-        server.WriteDisplayLine($"Progress: [{GenerateProgress(0)}] 0%");
+        //server.WriteDisplayLine($"Progress: [{GenerateProgress(0)}] 0%");
+        foreach (var Folder in FoldersToTrim)
+        {
+            var TrimPath = Path.Combine(server.ServerPath, Folder);
+            if (Directory.Exists(TrimPath))
+            {
+                server.WriteDisplayLine("TRIMMING: " + Folder);
+                Directory.Delete(TrimPath, true);
+            }
+        }
+
+        //server.WriteDisplayLine($"Progress: [{GenerateProgress(0)}] 0%");
+        server.Progress.Loading = false;
         var ZIP = new ZipArchive(file, ZipArchiveMode.Read);
         await ZIP.ExtractAsync(UpdatePath, new Progress<double>(I =>
         {
-            server.Progress = I * 100;
+            server.Progress.Value = I;
         }));
-        server.Progress = null;
 
+        server.Progress.Loading = true;
         foreach (var Item in FilesToBackup)
         {
             server.WriteDisplayLine("RESTORING: " + Item);
@@ -318,7 +335,8 @@ public static class MaintenanceService
                 File.Copy(Path.Combine(BackupFolder, Item), path, true);
         }
 
-        server.WriteDisplay("UPDATING SERVER PROPERTIES...");
+        server.Progress.Show("UPDATING SERVER PROPERTIES...", true);
+        server.WriteDisplayLine("UPDATING SERVER PROPERTIES...");
         using var Reader = new StreamReader(ZIP.Entries.First(x => x.Name == "server.properties").Open());
         var NewProps = BedrockPropertiesService.ReadProperties(Reader);
         var Props = server.GetProperties();
@@ -353,6 +371,8 @@ public static class MaintenanceService
         void End()
         {
             server.CommandRunning = false;
+            server.Progress.Hide();
+            
             server.CommandQue.Release();
             if (restartServer)
                 server.StartServer();

@@ -43,7 +43,7 @@ public interface IGameServer : INotifyPropertyChanged, IDisposable
     (Color Indicator, string Status) ServerStatus { get; }
 
     DateTime? StartupDate { get; }
-    double? Progress { get; set; }
+    ProgressDisplay Progress { get; }
 
     /// <summary>Underlying OS process, if this server runs as one. Null otherwise.</summary>
     Process? ServerProcess { get; }
