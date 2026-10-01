@@ -24,6 +24,23 @@
     <script src="@Assets["_framework/blazor.web.js"]"></script>
     <script src="@Assets["_content/MudBlazor/MudBlazor.min.js"]"></script>
     <script>
+        window.mcserverPostLogin = (username, password, returnUrl) => {
+            const f = document.createElement('form');
+            f.method = 'post';
+            f.action = '/auth/login';
+            const add = (name, value) => {
+                const i = document.createElement('input');
+                i.type = 'hidden';
+                i.name = name;
+                i.value = value ?? '';
+                f.appendChild(i);
+            };
+            add('username', username);
+            add('password', password);
+            add('returnUrl', returnUrl);
+            document.body.appendChild(f);
+            f.submit();
+        };
         window.downloadFileFromStream = async (fileName, contentStreamReference) => {
             const arrayBuffer = await contentStreamReference.arrayBuffer();
             const blob = new Blob([arrayBuffer]);

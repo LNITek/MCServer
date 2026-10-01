@@ -32,6 +32,15 @@
         <MudIconButton Icon="@Icons.Rounded.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer"/>
         <MudText Color="Color.Primary" Typo="Typo.h6">@PageHeader</MudText>
         <MudSpacer />
+        <AuthorizeView>
+            <Authorized>
+                <MudTooltip Text="@context.User.Identity?.Name">
+                    <form method="post" action="/auth/logout" style="display:inline-flex">
+                        <MudIconButton ButtonType="ButtonType.Submit" Icon="@Icons.Rounded.Logout" Color="Color.Inherit" Title="Logout"/>
+                    </form>
+                </MudTooltip>
+            </Authorized>
+        </AuthorizeView>
         <MudIconButton Icon="@GetToggleTheme()" Color="Color.Inherit" OnClick="ToggleDarkMode" />@* Style="position:fixed; top:12px; right:12px; z-index:9999;" *@
     </MudAppBar>
     <MudDrawer @bind-Open="@_open" Elevation="1">

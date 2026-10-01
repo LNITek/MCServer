@@ -1,0 +1,86 @@
+@page "/login"
+@layout Layout.EmptyLayout
+@attribute [AllowAnonymous]
+@inject AuthService Auth
+@inject IJSRuntime JS
+
+<PageTitle>MCServer - Login</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Style="margin-top: 12vh;">
+    <MudPaper Elevation="4" Class="pa-6">
+        <MudStack Spacing="0" AlignItems="AlignItems.Center">
+            <MudImage Src="favicon.png" Alt="Icon" Width="48" Height="48" ObjectFit="ObjectFit.Contain" />
+            <MudText Typo="Typo.h5" Class="mt-2">MCServer Login</MudText>
+        </MudStack>
+
+        <MudForm @ref="_form" @bind-IsValid="_valid" Class="d-flex flex-column gap-4 mt-4">
+            <MudTextField T="string" Label="Username" Variant="Variant.Outlined"
+                          @bind-Value="_username" Required="true" RequiredError="Username is required."
+                          autocomplete="username" AutoFocus="true" />
+
+            <MudTextField T="string" Label="Password" Variant="Variant.Outlined"
+                          InputType="InputType.Password" @bind-Value="_password"
+                          Required="true" RequiredError="Password is required."
+                          autocomplete="current-password"
+                          @onkeydown="OnKeyDown" />
+
+            @if (ShowError)
+            {
+                <MudAlert Severity="Severity.Error" Dense="true">@_errorText</MudAlert>
+            }
+
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                       Disabled="_busy" OnClick="DoLogin">
+                @(_busy ? "Logging in..." : "Login")
+            </MudButton>
+        </MudForm>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    [SupplyParameterFromQuery] public string? ReturnUrl { get; set; }
+    [SupplyParameterFromQuery(Name = "error")] public string? ErrorFlag { get; set; }
+
+    private MudForm _form = null!;
+    private bool _valid;
+    private bool _busy;
+    private string? _localError;
+
+    private bool ShowError => _localError is not null || ErrorFlag == "1";
+    private string _errorText => _localError ?? "Invalid username or password.";
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            await DoLogin();
+    }
+
+    private async Task DoLogin()
+    {
+        _localError = null;
+        await _form.Validate();
+        if (!_valid)
+            return;
+
+        // Instant feedback without a reload; the cookie itself is still set
+        // by a native POST so the flow stays SSR-safe.
+        if (!Auth.ValidateCredentials(_username, _password))
+        {
+            _localError = "Invalid username or password.";
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            await JS.InvokeVoidAsync("mcserverPostLogin", _username.Trim(), _password, ReturnUrl ?? "");
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private string? _username;
+    private string? _password;
+}

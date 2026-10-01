@@ -1,9 +1,14 @@
+using System.Security.Claims;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using MCServer;
 using MCServer.BDS;
 using MCServer.Components;
 using MCServer.Plugins;
 using MCServer.Server;
 using MCServer.Services;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.Extensions.Options;
 using MudBlazor;
 using MudBlazor.Services;
@@ -35,6 +40,16 @@ public class Program
 
     public static void Main(string[] args)
     {
+        // Host CLI: reset the admin login without starting the web server.
+        // Usage: MCServer --reset-auth
+        if (args.Any(a => a.Equals("--reset-auth", StringComparison.OrdinalIgnoreCase) ||
+                          a.Equals("--reset-admin", StringComparison.OrdinalIgnoreCase) ||
+                          a.Equals("reset-auth", StringComparison.OrdinalIgnoreCase)))
+        {
+            ResetAdminViaCli();
+            return;
+        }
+
         var builder = WebApplication.CreateBuilder(args);
 
         // Add services to the container.
@@ -54,6 +69,23 @@ public class Program
             .AddRazorComponents()
             .AddInteractiveServerComponents();
 
+        builder.Services
+            .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+            .AddCookie(options =>
+            {
+                options.LoginPath = "/login";
+                options.LogoutPath = "/login";
+                options.AccessDeniedPath = "/login";
+                options.ExpireTimeSpan = TimeSpan.FromDays(7);
+                options.SlidingExpiration = true;
+                options.Cookie.Name = "MCServer.Auth";
+                options.Cookie.HttpOnly = true;
+                options.Cookie.SameSite = SameSiteMode.Lax;
+            });
+        builder.Services.AddAuthorization();
+        builder.Services.AddCascadingAuthenticationState();
+        builder.Services.AddHttpContextAccessor();
+
         var serverHost = new ServerHost();
         var pluginService = new PluginService(PluginsPath);
         var gameServers = new GameServers();
@@ -62,6 +94,10 @@ public class Program
         builder.Services.AddSingleton(pluginService);
         builder.Services.AddSingleton(gameServers);
         builder.Services.AddSingleton<SettingsService>();
+        builder.Services.AddSingleton<AuthService>();
+        builder.Services.AddSingleton<ConsoleInputService>();
+        builder.Services.AddSingleton<HostConsoleCommands>();
+        builder.Services.AddHostedService<ConsoleReaderService>();
         builder.Services.AddSingleton<ProcessMetricsService>();
         builder.Services.AddSingleton<HostMetricsService>();
 
@@ -69,6 +105,10 @@ public class Program
 
         Settings = app.Services.GetRequiredService<IOptions<AppSettings>>().Value;
         SettingsStore = app.Services.GetRequiredService<SettingsService>();
+        // Ensures a default Admin/Admin login exists on first start.
+        app.Services.GetRequiredService<AuthService>();
+        // Attaches the live host-console commands (help, reset-auth) to the input bus.
+        app.Services.GetRequiredService<HostConsoleCommands>();
 
         // Built-in server plugins ship with the app; external ones load from Plugins/.
         pluginService.RegisterBuiltIn(new BedrockPlugin());
@@ -92,6 +132,36 @@ public class Program
 
         app.UseAntiforgery();
 
+        app.UseAuthentication();
+        app.UseAuthorization();
+
+        // Blazor Server SSR guard: redirect page navigations before Blazor renders,
+        // so anonymous users always land on /login (never a half-rendered shell).
+        app.Use(async (ctx, next) =>
+        {
+            if (ctx.Request.Method == HttpMethods.Get)
+            {
+                var path = ctx.Request.Path;
+                var authenticated = ctx.User.Identity?.IsAuthenticated == true;
+
+                if (!authenticated && !IsPublicPage(path))
+                {
+                    var returnUrl = path + ctx.Request.QueryString;
+                    ctx.Response.Redirect($"/login?returnUrl={Uri.EscapeDataString(returnUrl.ToString())}");
+                    return;
+                }
+
+                if (authenticated && path.Equals("/login", StringComparison.OrdinalIgnoreCase))
+                {
+                    ctx.Response.Redirect(SafeReturnUrl(ctx.Request.Query["returnUrl"].ToString()));
+                    return;
+                }
+            }
+            await next();
+        });
+
+        MapAuthFormEndpoints(app);
+
         app.MapStaticAssets();
         app.MapRazorComponents<App>()
             .AddInteractiveServerRenderMode();
@@ -99,6 +169,115 @@ public class Program
         app.Lifetime.ApplicationStopping.Register(() => gameServers.Dispose());
 
         app.Run();
+    }
+
+    /// <summary>
+    /// Plain HTML form POSTs (no JSON API): the login page posts a native form,
+    /// the server sets the auth cookie and redirects. Works in SSR and interactive circuits.
+    /// </summary>
+    private static void MapAuthFormEndpoints(WebApplication app)
+    {
+        app.MapPost("/auth/login", async (HttpContext ctx, AuthService auth) =>
+        {
+            var form = await ctx.Request.ReadFormAsync();
+            var username = form["username"].ToString();
+            var password = form["password"].ToString();
+            var returnUrl = form["returnUrl"].ToString();
+
+            if (!auth.ValidateCredentials(username, password))
+            {
+                var dest = $"/login?error=1{(string.IsNullOrEmpty(returnUrl) ? "" : $"&returnUrl={Uri.EscapeDataString(returnUrl)}")}";
+                return Results.Redirect(dest);
+            }
+
+            var user = auth.FindByUsername(username)!;
+            var claims = new List<Claim>
+            {
+                new(ClaimTypes.Name, user.Username),
+                new(ClaimTypes.Role, user.Role)
+            };
+            var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            await ctx.SignInAsync(
+                CookieAuthenticationDefaults.AuthenticationScheme,
+                new ClaimsPrincipal(identity),
+                new AuthenticationProperties { IsPersistent = true, ExpiresUtc = DateTimeOffset.UtcNow.AddDays(7) });
+
+            return Results.Redirect(SafeReturnUrl(returnUrl));
+        }).DisableAntiforgery();
+
+        app.MapPost("/auth/logout", async (HttpContext ctx) =>
+        {
+            await ctx.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            return Results.Redirect("/login");
+        }).DisableAntiforgery();
+    }
+
+    /// <summary>Only local return URLs are honored (open-redirect protection).</summary>
+    private static string SafeReturnUrl(string? url) =>
+        !string.IsNullOrEmpty(url) && url.StartsWith('/') && !url.StartsWith("//") ? url : "/dashboard";
+
+    /// <summary>Paths reachable without a login: the login page itself, error pages, Blazor/asset endpoints.</summary>
+    private static bool IsPublicPage(PathString path)
+    {
+        if (path.Equals("/login") || path.Equals("/not-found") || path.Equals("/Error"))
+            return true;
+
+        var s = path.Value ?? "";
+        if (s.StartsWith("/_blazor", StringComparison.OrdinalIgnoreCase) ||
+            s.StartsWith("/_framework", StringComparison.OrdinalIgnoreCase) ||
+            s.StartsWith("/_content", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        return Path.HasExtension(s); // static assets: css, js, png, ...
+    }
+
+    /// <summary>
+    /// Resets the Admin user to Admin/Admin by editing the settings JSON
+    /// directly (no web server needed). Never throws.
+    /// </summary>
+    private static void ResetAdminViaCli()
+    {
+#if DEBUG
+        var file = $"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Development"}.json";
+#else
+        var file = "appsettings.json";
+#endif
+        try
+        {
+            var defaultUsers = new JsonArray
+            {
+                new JsonObject
+                {
+                    ["Username"] = AuthService.DefaultUsername,
+                    ["PasswordHash"] = PasswordHasher.Hash(AuthService.DefaultPassword),
+                    ["Role"] = AuthService.AdminRole
+                }
+            };
+
+            if (!File.Exists(file))
+            {
+                Console.WriteLine($"Settings file '{file}' not found. Nothing to reset.");
+                Console.WriteLine($"On next start a default login {AuthService.DefaultUsername}/{AuthService.DefaultPassword} will be created automatically.");
+                return;
+            }
+
+            var root = JsonNode.Parse(File.ReadAllText(file))?.AsObject();
+            if (root is null || !root.ContainsKey(AppSettings.SettingName))
+            {
+                Console.WriteLine($"No '{AppSettings.SettingName}' section in '{file}'. Nothing to reset.");
+                return;
+            }
+
+            var section = root[AppSettings.SettingName]!.AsObject();
+            section["Users"] = defaultUsers;
+            File.WriteAllText(file, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+
+            Console.WriteLine($"Admin login in '{file}' has been reset to {AuthService.DefaultUsername}/{AuthService.DefaultPassword}.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to reset admin login: {ex.Message}");
+        }
     }
 
     private sealed class ServerHost : IServerHost
