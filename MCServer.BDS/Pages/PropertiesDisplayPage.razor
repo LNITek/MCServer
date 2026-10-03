@@ -1,0 +1,154 @@
+@using MCServer.BDS.Services
+@implements IDisposable
+
+<MudGrid Spacing="4">
+
+    @if (Property is null)
+    {
+        <MudItem xs="12">
+            <MudAlert Variant="Variant.Text" Severity="Severity.Info">Select a property or create a new one.</MudAlert>
+        </MudItem>
+        return;
+    }
+
+    <MudItem xs="12">
+        <MudStack Spacing="1" Row>
+            @if (ShowBack)
+            {
+                <MudIconButton Variant="Variant.Text" Color="Color.Inherit" Icon="@Icons.Filled.ArrowBack"
+                               OnClick="ShowList" />
+            }
+
+            <MudHidden Breakpoint="Breakpoint.SmAndDown">
+                <MudAlert Variant="Variant.Text" Severity="Severity.Warning">
+                    These changes may require a restart to take an effect!
+                </MudAlert>
+            </MudHidden>
+            <MudSpacer />
+
+            <MudIconButton Variant="Variant.Text" Color="Color.Info" Icon="@Icons.Rounded.Save" OnClick="Save" />
+            @if (Property.Mode == PropertyEditMode.Overwrite)
+            {
+                <MudIconButton Variant="Variant.Text" Color="Color.Warning" Icon="@Icons.Rounded.RestartAlt"
+                               OnClick="ResetProperty_Click" />
+            }
+            else if (Property.Mode == PropertyEditMode.Custom)
+            {
+                <MudIconButton Variant="Variant.Text" Color="Color.Error" Icon="@Icons.Rounded.Delete"
+                               OnClick="DeleteProperty_Click" />
+            }
+        </MudStack>
+    </MudItem>
+    
+    <MudHidden Breakpoint="Breakpoint.MdAndUp">
+        <MudItem xs="12">
+            <MudAlert Variant="Variant.Text" Severity="Severity.Warning" Style="width: 100%;">
+                Changes may require a restart!
+                @* A restart may be needed!
+                    A restart may be require! *@
+            </MudAlert>
+        </MudItem>
+    </MudHidden>
+
+    <MudItem xs="12">
+        <MudStack Spacing="4">
+            @if (Property.Mode == PropertyEditMode.Custom)
+            {
+                <MudTextField Variant="Variant.Outlined" T="string" Label="Name" @bind-Value="Property.Value">
+                </MudTextField>
+                <MudTextField Variant="Variant.Outlined" T="string" Label="Value" @bind-Value="Property.Value">
+                </MudTextField>
+                <MudTextField Variant="Variant.Outlined" T="string" Placeholder="Description" @bind-Value="Property.Value"
+                              MaxLines="25">
+                </MudTextField>
+            }
+            else
+            {
+                <MudText Typo="Typo.h6">@Property.Name</MudText>
+                <MudTextField Variant="Variant.Outlined" T="string" Placeholder="Property Value"
+                              @bind-Value="Property.Value"></MudTextField>
+                <MudText Typo="Typo.h6">Description</MudText>
+                <MudText Typo="Typo.body1" Style="white-space:pre-line;flex-grow:1; overflow:auto;">@Property.Desc</MudText>
+            }
+        </MudStack>
+    </MudItem>
+</MudGrid>
+    
+@code {
+    [Parameter]
+    public Property? Property
+    {
+        get => _property;
+        set
+        {
+            if (_property == value) return;
+            _property = value;
+            PropertyChanged.InvokeAsync(value);
+        }
+    }
+    private Property? _property { get; set; } = default;
+    [Parameter]
+    public EventCallback<Property?> PropertyChanged { get; set; }
+
+    [Parameter]
+    public ObservableCollection<Property> PropertiesList
+    {
+        get => _propertiesList;
+        set
+        {
+            if (_propertiesList == value) return;
+            _propertiesList = value;
+            PropertiesListChanged.InvokeAsync(value);
+        }
+    }
+    private ObservableCollection<Property> _propertiesList { get; set; } = [];
+    [Parameter]
+    public EventCallback<ObservableCollection<Property>> PropertiesListChanged { get; set; }
+
+    [Parameter, EditorRequired]
+    public BedrockServer Server { get; set; } = null!;
+    [Parameter]
+    public bool ShowBack { get; set; } = false;
+
+    [Parameter]
+    public EventCallback OnStateHasChanged { get; set; }
+
+    private void UpdateState()
+    {
+        StateHasChanged();
+        OnStateHasChanged.InvokeAsync();
+    }
+
+    public void ShowList()
+    {
+        Property = null;
+    }
+
+    public void Dispose()
+    {
+        Save();
+    }
+
+    private void Save()
+    {
+        if (Server == null) return;
+        Server.SetProperties(PropertiesList);
+    }
+
+    private void DeleteProperty_Click()
+    {
+        if (Property?.Mode != PropertyEditMode.Custom) return;
+        PropertiesList.Remove(Property);
+        Property = null;
+        Save();
+        UpdateState();
+    }
+
+    private void ResetProperty_Click()
+    {
+        if (Property?.Mode != PropertyEditMode.Overwrite) return;
+        Property.Mode = PropertyEditMode.None;
+        Save();
+        UpdateState();
+    }
+}

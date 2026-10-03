@@ -1,37 +1,54 @@
 @using MCServer.BDS.Services
 @using MCServer.Plugins
-@implements IDisposable
 
-<PageTitle>MCServer - Player Settings</PageTitle>
+<PageTitle>@(Server?.Settings.Name ?? "MCServer") - Player Settings</PageTitle>
 
 <style>
-    .mud-input-control {
-        border: 0;
-        margin: 0;
-        padding: 0;
+    .list-page-layout {
+        height: 100%;
         display: flex;
-        flex: 0 1 auto;
-        max-width: 100%;
-        position: relative;
-        flex-direction: column;
-        vertical-align: top;
+        flex-direction: row;
+        gap: 16px;
     }
 
-    .mud-select {
-        display: flex;
-        flex-grow: 0;
-        position: relative;
+    .list-page {
+        width: 360px;
+        flex-shrink: 0;
+        height: 100%;
+    }
+
+    .list-page-detail {
+        flex: 1 1 auto;
+        min-width: 0;
+        height: 100%;
+        overflow: auto;
+    }
+
+    .list-page-overlay {
+        position: absolute;
+        inset: 0;
+        background: var(--mud-palette-background);
+        z-index: 10;
+        overflow: auto;
+    }
+
+    @@media (max-width: 959.98px) {
+        .list-page {
+            width: 100%;
+        }
     }
 </style>
 
-<div style="height:100%; display:flex; flex-direction:row;">
-    <MudStack Spacing="3" Style="min-width:25%; max-width:30%; width: 100%;">
-        <MudTextField T="string" @bind-Value="SearchText" Placeholder="Search..." Clearable Variant="Variant.Outlined"
-                      Adornment="Adornment.End" AdornmentIcon="@Icons.Rounded.Search" OnAdornmentClick="@Search"
-                      TextChanged="@(s => Search(s))">
-        </MudTextField>
+<div style="position: relative; height: 100%;">
+    <div class="list-page-layout">
+        <MudStack Spacing="3" Class="list-page" Style="height: 100%;">
+            <MudTextField T="string" @bind-Value="SearchText" Placeholder="Search..." Clearable
+                          Variant="Variant.Outlined" Adornment="Adornment.End" AdornmentIcon="@Icons.Rounded.Search"
+                          OnAdornmentClick="@Search" TextChanged="@(s => Search(s))">
+            </MudTextField>
 
-        <MudList T="Player" SelectionMode="SelectionMode.SingleSelection" @bind-SelectedValue="SelectedPlayer" Style="overflow:auto; height:100%">
+            <MudList T="Player" SelectionMode="SelectionMode.SingleSelection" @bind-SelectedValue="SelectedPlayer"
+                     Style="overflow:auto; height:100%">
             @foreach (var player in Players)
             {
                 <MudListItem Value="@player">
@@ -47,63 +64,32 @@
                     </ChildContent>
                 </MudListItem>
             }
-        </MudList>
-        <MudButton Size="Size.Large" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Rounded.Add" OnClick="AddPlayer_Click">Add Player</MudButton>
-    </MudStack>
+            </MudList>
+            <MudButton Size="Size.Large" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Rounded.Add"
+                       OnClick="AddPlayer_Click">Add Player</MudButton>
+        </MudStack>
 
-    <MudDivider Vertical Class="mx-4" />
+        <MudHidden Breakpoint="Breakpoint.SmAndDown">
+            <MudDivider Vertical />
+        </MudHidden>
 
-    <MudStack Spacing="3" Style="flex-grow:1; overflow:auto;">
-        @if (SelectedPlayer is not null)
-        {
-            <MudStack Spacing="1" Row>
-                <MudSpacer/>
-                <MudIconButton Variant="Variant.Text" Color="Color.Info" Icon="@Icons.Rounded.Save" OnClick="Save"/>
-                <MudIconButton Variant="Variant.Text" Color="Color.Error" Icon="@Icons.Rounded.Delete" OnClick="DeletePlayer_Click"/>
-            </MudStack>
+        <div class="list-page-detail">
+            <MudHidden Breakpoint="Breakpoint.SmAndDown">
+                <PlayersDisplayPage Server="@Bedrock" @bind-Player="SelectedPlayer"
+                                     OnStateHasChanged="StateHasChanged" />
+            </MudHidden>
+        </div>
+    </div>
 
-            <MudTextField Variant="Variant.Outlined" T="string" Label="Name" @bind-Value="SelectedPlayer.Name"></MudTextField>
-            <MudTextField Variant="Variant.Outlined" T="string" Label="XUID" @bind-Value="SelectedPlayer.Xuid"></MudTextField>
-
-            <MudText>
-                <MudText><b>Last time connected:</b> @SelectedPlayer.LastLogin</MudText>
-                <MudText><b>Total time played:</b> @SelectedPlayer.TotalPlayTime</MudText>
-            </MudText>
-
-            <MudText Typo="Typo.h6">Properties</MudText>
-
-            <MudSelect Variant="Variant.Outlined" T="PlayerPermission" Label="Permission" @bind-Value="SelectedPlayer.Permissions" FullWidth>
-                @foreach (var permission in Enum.GetValues<PlayerPermission>())
-                {
-                    <MudSelectItem Value="permission">@permission.ToString()</MudSelectItem>
-                }
-            </MudSelect>
-
-
-            <MudStack Spacing="1" Row AlignItems="AlignItems.Center">
-                <MudCheckBox T="bool" @bind-Value="SelectedPlayer.WhiteList" Label="Add to allow list" />
-                <MudSwitch T="bool" @bind-Value="SelectedPlayer.IgnoresPlayerLimit" Label="Ignores Player Limit" Disabled="@(!SelectedPlayer.WhiteList)" />
-
-                <MudDivider Vertical/>
-
-                <MudCheckBox T="bool" @bind-Value="SelectedPlayer.Ban" Label="Is Player Banned" />
-                <MudSwitch T="bool" ValueChanged="(v) => { SelectedPlayer.BanTime = v ? null : DateTime.Today.AddDays(1);}"
-                           Value="@(SelectedPlayer.BanTime == null)" Label="Permanently" Disabled="@(!SelectedPlayer.Ban)"/>
-            </MudStack>
-
-            @if (SelectedPlayer.Ban)
-            {
-                <MudStack Spacing="1" Row AlignItems="AlignItems.Center">
-                    <MudDatePicker Date="@SelectedPlayer.BanTime" Disabled="@(SelectedPlayer.BanTime == null)" Label="Banned until"></MudDatePicker>
-                    <MudTextField Variant="Variant.Outlined" T="string" Label="Ban reason" @bind-Value="SelectedPlayer.BanResion" FullWidth></MudTextField>
-                </MudStack>
-            }
-
-        } else
-        {
-            <MudAlert Variant="Variant.Text" Severity="Severity.Info">Select a player or create a new one.</MudAlert>
-        }
-    </MudStack>
+    @if (SelectedPlayer != default)
+    {
+        <MudHidden Breakpoint="Breakpoint.MdAndUp">
+            <div class="list-page-overlay">
+                <PlayersDisplayPage Server="@Bedrock" @bind-Player="SelectedPlayer" ShowBack
+                                     OnStateHasChanged="StateHasChanged" />
+            </div>
+        </MudHidden>
+    }
 </div>
 
 @code {
@@ -112,15 +98,21 @@
 
     private BedrockServer Bedrock => (BedrockServer)Server;
 
+    private IGameServer? _loadedServer;
+
     public ExList<Player> Players = new([]);
     public string SearchText { get; set; } = string.Empty;
     public Player? SelectedPlayer = default;
 
-    protected override void OnInitialized()
+    /// <summary>Reloads when the <c>Server</c> parameter changes (same page reused for another server).</summary>
+    protected override void OnParametersSet()
     {
+        if (ReferenceEquals(_loadedServer, Server)) return;
+        _loadedServer = Server;
         Players = new(Bedrock.PlayerList);
         Players.SetSort((a, b) => a.Xuid.CompareTo(b.Xuid));
-        SelectedPlayer = Bedrock.PlayerList.FirstOrDefault();
+        //SelectedPlayer = Bedrock.PlayerList.FirstOrDefault();
+        SelectedPlayer = default;
 
         Players.SetFilter(filter =>
             {
@@ -130,29 +122,10 @@
             });
     }
 
-    public void Dispose()
-    {
-        Save();
-    }
-
-    private void Save()
-    {
-        Bedrock.SetPlayers(Bedrock.PlayerList);
-        Bedrock.RefreshPlayerProperties();
-    }
-
     private void AddPlayer_Click()
     {
         Bedrock.PlayerList.Add(new());
         SelectedPlayer = Bedrock.PlayerList.LastOrDefault();
-        StateHasChanged();
-    }
-
-    private void DeletePlayer_Click()
-    {
-        Bedrock.PlayerList.Remove(SelectedPlayer);
-        SelectedPlayer = null;
-        Save();
         StateHasChanged();
     }
 

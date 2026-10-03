@@ -5,6 +5,7 @@ namespace MCServer.Plugins;
 
 public partial class ProgressDisplay : INotifyPropertyChanged
 {
+    /// <summary>Progress fraction 0..1. Reporters must use fractions, not percents.</summary>
     [NotifyChanged([nameof(DisplayValue)])] private double value = 0;
     [NotifyChanged] private string message = string.Empty;
     [NotifyChanged] private bool open = false;

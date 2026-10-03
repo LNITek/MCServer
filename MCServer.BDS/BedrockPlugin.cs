@@ -1,5 +1,6 @@
 using MCServer.BDS.Pages;
 using MCServer.Plugins;
+using MudBlazor;
 using Icons = MudBlazor.FontIcons.MaterialIcons;
 
 namespace MCServer.BDS;
@@ -14,6 +15,18 @@ public sealed class BedrockPlugin : IGameServerPlugin, IServerPagesProvider
 
     public IGameServer Create(ServerSettings settings, IServerHost host) =>
         new BedrockServer(settings, host);
+
+    public async Task<ServerSettings?> CreateServerAsync(IServerHost host, IDialogService dialogs)
+    {
+        var dialog = await dialogs.ShowAsync<Dialogs.NewBedrockServerDialog>(
+            "Add Bedrock Server",
+            new DialogParameters(),
+            new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true });
+        var result = await dialog.Result;
+        if (result is null || result.Canceled || result.Data is not ServerSettings settings)
+            return null;
+        return settings;
+    }
 
     public IEnumerable<ServerPageDefinition> GetPages() =>
     [

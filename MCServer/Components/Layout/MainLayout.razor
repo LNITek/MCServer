@@ -1,13 +1,12 @@
 ﻿@using System.ComponentModel
 @using System.Reflection.Metadata.Ecma335
-@using System.Text.Json
-@using System.Text.Json.Serialization.Metadata
 @inherits LayoutComponentBase
 @implements IDisposable
 @inject ILocalStorageService Storage;
 @inject ISnackbar Snackbar
 @inject NavigationManager Nav
 @inject GameServers Servers
+@inject PageHeaderService HeaderService
 
 <MudThemeProvider @ref="_mudThemeProvider" Theme="Theme.MasterTheme" @bind-IsDarkMode="IsDarkMode" />
 <MudPopoverProvider />
@@ -30,7 +29,14 @@
 <MudLayout>
     <MudAppBar Elevation="1">
         <MudIconButton Icon="@Icons.Rounded.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer"/>
-        <MudText Color="Color.Primary" Typo="Typo.h6">@PageHeader</MudText>
+        @if (HeaderService.Content is not null)
+        {
+            @HeaderService.Content
+        }
+        else
+        {
+            <MudText Color="Color.Primary" Typo="Typo.h6" Style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">@(HeaderService.Title ?? DefaultPageHeader)</MudText>
+        }
         <MudSpacer />
         <AuthorizeView>
             <Authorized>
@@ -112,7 +118,7 @@
     </MudMainContent>
 </MudLayout>
 
-<div id="blazor-error-ui" data-nosnippet>
+<div id="blazor-error-ui" data-nosnippet style="z-index: 10000; color: var(--mud-palette-error-text); background-color: var(--mud-palette-error);">
     An unhandled error has occurred.
     <a href="." class="reload">Reload</a>
     <span class="dismiss">🗙</span>
@@ -125,15 +131,25 @@
     {
         foreach (var server in Servers)
             server.Settings.PropertyChanged += OnServerSettingsChanged;
+        HeaderService.Changed += OnHeaderChanged;
+        Nav.LocationChanged += OnLocationChanged;
     }
 
     private void OnServerSettingsChanged(object? sender, PropertyChangedEventArgs e) =>
+        InvokeAsync(StateHasChanged);
+
+    private void OnHeaderChanged() =>
+        InvokeAsync(StateHasChanged);
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e) =>
         InvokeAsync(StateHasChanged);
 
     public void Dispose()
     {
         foreach (var server in Servers)
             server.Settings.PropertyChanged -= OnServerSettingsChanged;
+        HeaderService.Changed -= OnHeaderChanged;
+        Nav.LocationChanged -= OnLocationChanged;
     }
 
     private void ToggleDrawer()
@@ -152,7 +168,7 @@
 
     private string GetToggleTheme() => IsDarkMode ? Icons.Rounded.LightMode : Icons.Rounded.DarkMode;
 
-    private string PageHeader
+    private string DefaultPageHeader
     {
         get
         {
@@ -166,7 +182,7 @@
                 "schedules" => "Schedule",
                 "props" => "Properties",
                 "player-settings" => "Player Settings",
-                "packets" => "Packet Rate Limit Config",
+                //"packets" => "Packet Rate Limit Config",
                 "notes" => "How To",
                 "releases" => "Release Notes",
                 "plugins" => "Plugins",

@@ -1,5 +1,5 @@
-using System.Text.Json;
 using Cronos;
+using Newtonsoft.Json;
 
 namespace MCServer.Plugins;
 
@@ -19,15 +19,18 @@ public static class SchedulerService
         if (!File.Exists(server.SchedulesPath()))
             return [];
 
-        var Schedules = JsonSerializer.Deserialize<Schedule[]>
-            (File.Open(server.SchedulesPath(), FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
+        using var stream = File.Open(server.SchedulesPath(), FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        using var reader = new StreamReader(stream);
+        using var jsonReader = new JsonTextReader(reader);
+        var serializer = JsonSerializer.Create(JsonOptions.SerializerSettings);
+        var schedules = serializer.Deserialize<Schedule[]>(jsonReader);
 
-        return [.. Schedules ?? []];
+        return [.. schedules ?? []];
     }
 
     public static void SetSchedules(this IGameServer server, IEnumerable<Schedule> schedules)
     {
-        var json = JsonSerializer.Serialize(schedules);
+        var json = JsonConvert.SerializeObject(schedules, JsonOptions.SerializerSettings);
         File.WriteAllText(server.SchedulesPath(), json);
     }
 

@@ -1,26 +1,23 @@
-using System.Text.Json;
-using System.Text.Json.Nodes;
-using Microsoft.Extensions.Hosting;
+using MCServer.Plugins;
 using Microsoft.Extensions.Options;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace MCServer.Services;
 
 /// <summary>
-/// Owns the live <see cref="AppSettings"/> and writes changes (e.g. server renames)
-/// back to the settings JSON files they were loaded from.
+/// Owns the live <see cref="AppSettings"/> and persists it to the data-folder
+/// settings file (<see cref="Program.SettingsFilePath"/>). The shipped
+/// appsettings.json next to the binaries only provides install-time defaults
+/// and is never written to (it may live in read-only Program Files).
 /// </summary>
 public sealed class SettingsService
 {
-    private readonly string _contentRoot;
-    private readonly string _environment;
-
     public AppSettings Settings { get; }
 
-    public SettingsService(IOptions<AppSettings> options, IHostEnvironment environment)
+    public SettingsService(IOptions<AppSettings> options)
     {
         Settings = options.Value;
-        _contentRoot = environment.ContentRootPath;
-        _environment = environment.EnvironmentName;
     }
 
     /// <summary>
@@ -35,27 +32,21 @@ public sealed class SettingsService
     }
 
     /// <summary>
-    /// Persists the current settings into every settings file under the content root
-    /// that already contains an <c>AppSettings</c> section, leaving all
-    /// other sections (Logging, ...) untouched. Never throws.
+    /// Persists the current settings to the data-folder settings file,
+    /// creating it (and its directory) on first use. Never throws.
     /// </summary>
     public void Save()
     {
-        #if DEBUG
-        var file = $"appsettings.{_environment}.json";
-        #else
-        var file = "appsettings.json";
-        #endif
-
         try
         {
-            var root = JsonNode.Parse(File.ReadAllText(file))?.AsObject();
-            if (root is null || !root.ContainsKey(AppSettings.SettingName))
-                return;
+            var file = Program.SettingsFilePath;
+            Directory.CreateDirectory(Path.GetDirectoryName(file)!);
 
-            var section = JsonNode.Parse(JsonSerializer.Serialize(Settings));
-            root[AppSettings.SettingName] = section;
-            File.WriteAllText(file, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+            var root = new JObject
+            {
+                [AppSettings.SettingName] = JObject.FromObject(Settings, JsonSerializer.Create(JsonOptions.SerializerSettings))
+            };
+            File.WriteAllText(file, root.ToString(Formatting.Indented));
         }
         catch
         {

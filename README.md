@@ -1,62 +1,82 @@
 ﻿# MCServer
+[![Release](https://img.shields.io/badge/PreRelease-0.3.0-blue.svg)](https://github.com/LNITek/MCServer/releases/latest)
+![.NET](https://img.shields.io/badge/.NET-10-512BD4.svg)
+![Platform](https://img.shields.io/badge/platform-Windows%20x64-blue.svg)
 
-[![Release](https://img.shields.io/badge/PreRelease-26.0.0-blue.svg)](https://github.com/LNITek/MCServer/releases/latest)
+`MCServer` is a self-hosted web UI for managing Minecraft servers. The host itself is server-type agnostic — game support comes from plugins.
 
-`MCServer` is server software for Minecraft Bedrock using Mojang's bedrock dedicated server software (BDS) as a base.
+> ***Note!*** This software is optimised for private home servers. For public servers, use it at your own risk.
 
-> ***Note!*** ~~This software is optimised for private home servers. For a public servers, use it at your own risk.~~
-
-> ***Note!*** This software is ***NOT*** Mojang official software. It is created independently by **LNI.Tek**.
-`The Base Software (Bedrock Dedicated Server)` Is official Mojang software and can be downloaded at [Mojang's Website](https://www.minecraft.net/en-us/download/server/bedrock).
-
-> ***Note!*** By downloading and using this software you do agree to the Minecraft [End User License Agreement](https://minecraft.net/eula) and [Privacy Policy](https://go.microsoft.com/fwlink/?LinkId=521839).
-
+> ***Warning!*** This project is in development. Code is messy featurs my or my not work as expected, or at all.
 ---
 
-Check the `Content Tables` down below or find the [Documentation](https://github.com/LNITek/MCServer/wiki) for more info.
+Check the feature tables down below or find the [Documentation](https://github.com/LNITek/MCServer/wiki) for more info.
 <br/>
-The [Change Log](https://github.com/LNITek/MCServer/blob/main/MCServer/ChangeLog.md) contains info around changes, fixes and new features.
+The [ChangeLog](ChangeLog.md) contains info around changes, fixes and new features.
 <br/>
 Have an issue or feature in mind don't hesitate to post them [here](https://github.com/LNITek/MCServer/issues).
 <br/>
 Any issue or feature for the `Base Software (Bedrock Dedicated Server)` can be reported here: [Issues](https://bugs.mojang.com/projects/BDS/issues/BDS) and [Features](https://feedback.minecraft.net/).
 
-## Installation
-TODO
 
 ## Supported Platforms
 
-| OS		| GUI					| CLI |
-| -----		| -----					| ---					|
-| Windows	| :heavy_check_mark:	| :x:					|
-| Linux		| :heavy_check_mark:			| :x:					|
-| Docker	| :x:					| :x:					|
+| OS | Support | Installer |
+|---|---|---|
+| Windows | :heavy_check_mark: | :heavy_check_mark: |
+| Linux | :heavy_check_mark: | :x: |
+| Docker | :wavy_dash: | :x: |
 
-## Feature Support
-| Feature								                     | Bedrock				             | Java					|
-|-------------------------------------|-------------------------| -----					|
-| Auto Minecraft Updater				          | :heavy_check_mark:					                | :x:					|
-| Console Display						               | :heavy_check_mark:	     | :x:					|
-| User Interface						                | :heavy_check_mark:	     | :x:					|
-| Console Commands						              | :heavy_check_mark:					                | :x:					|
-| Auto Updater							                 | :x:					                | :x:					|
-| Server Properties File Editor			    | :heavy_check_mark:			   | :x:					|
-| CDN Config Editor			                | :x:			                  | :x:					|
-| Allow List File Editor				          | :heavy_check_mark:			   | :x:					|
-| Permissions File Editor				         | :heavy_check_mark:			   | :x:					|
-| Player Ban Controller				           | :heavy_check_mark:			   | :x:					|
-| Player Loging						                 | :heavy_check_mark:					 | :x:					|
-| Packet Rate Limit Editor				        | :wavy_dash:			          | :x:					|
-| Profanity White List Editor			      | :x:					                | :x:					|
-| Documentation Viewer					           | :heavy_check_mark:	     | :x:					|
-| Dynamic DNS Manager					            | :x:					                | :x:					|
-| Resource / Behavior Packs Manager		 | :x:					                | :x:					|
-| World Trim							                   | :heavy_check_mark:					                | :x:					|
-| World Export							                 | :x:					                | :x:					|
-| World Backup System					            | :heavy_check_mark:					                | :x:					|
-| Schedule System						               | :wavy_dash:			          | :x:					|
-| Power Management						              | :heavy_check_mark:	     | :x:					|
-| Multi Server / World Support			     | :wavy_dash:					                | :x:					|
-| Server / World Version Control			   | :x:					                | :x:					|
-| User Management 						              | :x:					                | :x:					|
-| External Hosting						              | :x:					                | :x:					|
+## Windows
+
+> Windows and its installer is curently under production testing.
+
+> Version 0.3.* is incompatible with previus versions (> 0.2.*). To upgrade first uninstall the old version manually, then install the fresh new version. Settings do not migrate.
+
+
+### Requirements:
+*  **Runtime**  — [ASP.NET Core 10 (x64)](https://dotnet.microsoft.com/download/dotnet/10.0)
+
+### Installation
+
+1. Install the ASP.NET Core 10 x64 runtime (link above).
+2. Run `MCServer.msi` from the [latest release](https://github.com/LNITek/MCServer/releases/latest) (installs to `C:\Program Files\MCServer\` with Start Menu shortcuts).
+3. Start **MCServer** and open `http://localhost:5000`.
+
+## Security
+
+Log in with `Admin` / `Admin`. Change the credentials immediately under Settings after installation.
+> Forgot your login? Type: `reset-auth` in the terminal (resets to `Admin` / `Admin`).
+
+The auth system is not tested agains any bad actors. I would keep the web UI LAN only.
+
+The project is AI assisted. Not all code writen by AI has been audited.
+
+## Platform Features
+
+| Feature | Status |
+|---|---|
+| App updater / Version checking | :x: |
+| Login & user auth | :heavy_check_mark: |
+| Multi user support | :x: |
+| Plugin system | :heavy_check_mark: |
+| Plugin version control | :x: |
+| Plugin Store | :x: |
+| Multi server support | :heavy_check_mark: |
+| Console display & commands | :heavy_check_mark: |
+| Schedule system | :heavy_check_mark: |
+| Power management | :heavy_check_mark: |
+| Documentation viewer | :heavy_check_mark: |
+| Server folder viewer | :heavy_check_mark: |
+| Server hardware resource viewer | :heavy_check_mark: |
+| Host system hardware resource viewer | :heavy_check_mark: |
+| External hosting | :x: |
+| Dynamic DNS manager | :x: |
+| Port management | :x: |
+| Port fowarding checker | :x: |
+
+## Bundled Plugins
+
+| Plugin | Description |
+|---|---|
+| [Bedrock Dedicated Server](MCServer.BDS/readme.md) | Manage Mojang Bedrock servers |

@@ -42,13 +42,23 @@
     public Color? AccentColor { get; set; }
 
     private ProcessMetricsSnapshot? _snapshot;
+    private Process? _loadedProcess;
 
     protected override void OnInitialized()
     {
-        MetricsService.Register(Process);
-
         MetricsService.MetricsUpdated += OnMetricsUpdated;
+    }
 
+    /// <summary>
+    /// Re-binds when the <c>Process</c> parameter changes (same card reused
+    /// for another server). The metrics event subscription is process-agnostic
+    /// (filters by PID), so only registration + snapshot need refreshing.
+    /// </summary>
+    protected override void OnParametersSet()
+    {
+        if (ReferenceEquals(_loadedProcess, Process)) return;
+        _loadedProcess = Process;
+        MetricsService.Register(Process);
         UpdateValue();
     }
 

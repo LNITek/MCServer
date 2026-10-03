@@ -9,8 +9,8 @@ public static class CommandsHelper
         try
         {
             var parts = ParseLine(Line);
-            var cmd = Commands.FirstOrDefault(x => x.Name.Equals(parts[0], StringComparison.CurrentCultureIgnoreCase)) ??
-                      throw new Exception($"C-01- Command '{parts[0]}' does not exist.");
+            var cmd = Commands.FirstOrDefault(x => x.Name.Equals(parts.FirstOrDefault(), StringComparison.CurrentCultureIgnoreCase)) ??
+                      throw new Exception($"C-01- Command '{parts.FirstOrDefault()}' does not exist.");
 
             List<ServerCommand.Argument> Params = [];
             var provided = new HashSet<string>(StringComparer.CurrentCultureIgnoreCase);

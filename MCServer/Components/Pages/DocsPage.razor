@@ -2,7 +2,7 @@
 @inject NavigationManager Nav
 @inject GameServers GameServers
 
-<PageTitle>MCServer - Documentation@(string.IsNullOrEmpty(_title) ? "" : $" - {_title}")</PageTitle>
+<PageTitle>@(_server?.Settings.Name ?? "MCServer") - Documentation@(string.IsNullOrEmpty(_title) ? "" : $" - {_title}")</PageTitle>
 
 <style>
     blockquote, pre {

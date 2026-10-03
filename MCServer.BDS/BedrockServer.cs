@@ -15,7 +15,7 @@ public partial class BedrockServer : INotifyPropertyChanged, IGameServer
 {
     public ServerSettings Settings { get; }
     public IServerHost Host { get; }
-    public string ServerPath => Settings.GetFullPath(Host.ServerFilesRoot);
+    public string ServerPath => Settings.GetFullPath(Host.ServerFiles);
     public DateTime? StartupDate { get; set; } = null;
     [NotifyChanged([nameof(ServerRunningStatus), nameof(ServerExitedStatus), nameof(RunningStatus)])]
     bool serverRunning = false;
@@ -36,6 +36,27 @@ public partial class BedrockServer : INotifyPropertyChanged, IGameServer
     }
 
     public int PlayerCount => PlayerList.Count;
+
+    /// <summary>BDS version sniffed from the server console (e.g. "1.26.21.1"), persisted across restarts.</summary>
+    /*public string? DetectedServerVersion { get; private set; }
+
+    public string? LoadDetectedServerVersion()
+    {
+        if (!string.IsNullOrWhiteSpace(DetectedServerVersion))
+            return DetectedServerVersion;
+        try
+        {
+            var path = Path.Combine(ServerPath, "bds-version.txt");
+            if (File.Exists(path))
+            {
+                var text = File.ReadAllText(path).Trim();
+                if (!string.IsNullOrWhiteSpace(text))
+                    return DetectedServerVersion = text;
+            }
+        }
+        catch { }
+        return DetectedServerVersion;
+    }*/
 
     public StackList OutputList { get; set; } = new(100);
     public Process ServerProcess { get; } = new();
@@ -71,7 +92,6 @@ public partial class BedrockServer : INotifyPropertyChanged, IGameServer
         };
 
         Progress.PropertyChanged += (_, _) => NotifyPropertyChanged(nameof(Progress));
-        Progress.Show("Test", true);
 
         DocFiles =
         [
@@ -160,6 +180,7 @@ public partial class BedrockServer : INotifyPropertyChanged, IGameServer
             player.IsOnline = false;
         };
         this.SetPlayers(PlayerList);
+        StartupDate = null;
     }
 
     public void WriteProcessError(object sender, DataReceivedEventArgs e)
@@ -171,6 +192,13 @@ public partial class BedrockServer : INotifyPropertyChanged, IGameServer
     public void WriteProcessOut(object sender, DataReceivedEventArgs e)
     {
         var Out = e.Data ?? "{NULL}";
+
+        /*var serverVersion = BedrockResourceService.ParseServerVersionLine(Out);
+        if (serverVersion is not null && !string.Equals(DetectedServerVersion, serverVersion, StringComparison.Ordinal))
+        {
+            DetectedServerVersion = serverVersion;
+            try { File.WriteAllText(Path.Combine(ServerPath, "bds-version.txt"), serverVersion); } catch { }
+        }*/
 
         if (Out.EndsWith("Server started."))
         {
@@ -189,7 +217,7 @@ public partial class BedrockServer : INotifyPropertyChanged, IGameServer
                 if (player.Ban)
                     Task.Delay(500).ContinueWith(t =>
                     {
-                        WriteLine($"kick \"{player.DisplayName}\" You are currently ban from this server until {player.BanTime?.ToString() ?? "Indefinitely"} for: {player.BanResion}");
+                        WriteLine($"kick \"{player.DisplayName}\" You are currently ban from this server until {player.BanTime?.ToString() ?? "Indefinitely"} for: {player.BanResin}");
                     });
 
                 player.LastLogin = DateTime.Now;

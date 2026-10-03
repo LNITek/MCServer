@@ -13,10 +13,14 @@
 
     protected override void OnInitialized()
     {
-        // Get this from your server data
-        _Started = StartedTime;
-
         _ = UpdateUptimeAsync();
+    }
+
+    /// <summary>Restarts the displayed time when the server (start time) changes.</summary>
+    protected override void OnParametersSet()
+    {
+        _Started = StartedTime;
+        UpdateUptime();
     }
 
     private async Task UpdateUptimeAsync()

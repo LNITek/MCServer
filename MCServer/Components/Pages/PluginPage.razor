@@ -4,7 +4,9 @@
 @inject GameServers GameServers
 @inject PluginService Plugins
 
-<PageTitle>MCServer - @_page?.Title</PageTitle>
+<PageTitle>@(_server?.Settings.Name ?? "MCServer") - @_page?.Title</PageTitle>
+
+<PageHeader Title="@_page?.Title" />
 
 @if (_server is not null && _page is not null)
 {
@@ -18,9 +20,18 @@
     private IGameServer? _server;
     private ServerPageDefinition? _page;
     private Dictionary<string, object> _parameters = new();
+    private string _loadedKey = "";
 
-    protected override void OnInitialized()
+    /// <summary>
+    /// Resolves server + page from the route. Runs on first render and every
+    /// time <c>serverId</c> or <c>slug</c> changes (Blazor reuses this
+    /// component instance when navigating between servers/pages).
+    /// </summary>
+    protected override void OnParametersSet()
     {
+        var key = $"{serverId}/{slug}";
+        if (_server is not null && key == _loadedKey) return;
+
         _server = GameServers.FindByID(serverId);
         if (_server is null)
         {
@@ -39,5 +50,6 @@
         {
             ["Server"] = _server,
         };
+        _loadedKey = key;
     }
 }

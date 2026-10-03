@@ -11,6 +11,7 @@ namespace MCServer.Plugins;
 /// </summary>
 public interface IServerHost
 {
+    string ServerFiles { get; }
     string ServerFilesRoot { get; }
     string BackupPath { get; }
     bool IsWindows { get; }
@@ -89,7 +90,7 @@ public interface IGameServer : INotifyPropertyChanged, IDisposable
             throw new InvalidOperationException("Server path is empty; refusing to delete.");
 
         var path = Path.GetFullPath(ServerPath);
-        var root = Path.GetFullPath(Host.ServerFilesRoot);
+        var root = Path.GetFullPath(Host.ServerFiles);
 
         if (path.Equals(root, StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("Refusing to delete the shared server files root.");

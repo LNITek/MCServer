@@ -1,0 +1,519 @@
+@using MCServer.BDS.Dialogs
+@using MCServer.BDS.Models
+@using MCServer.BDS.Services
+@using Microsoft.JSInterop
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject IJSRuntime JS
+
+<MudGrid Spacing="4">
+
+    @if (World is null)
+    {
+        <MudItem xs="12">
+            <MudAlert Variant="Variant.Text" Severity="Severity.Info">Select a world, or import a .zip / .tar.gz / .mcworld
+                archive.</MudAlert>
+            </MudItem>
+            return;
+        }
+
+        @if (Busy)
+        {
+            <MudItem xs="12">
+                <MudProgressLinear Indeterminate />
+            </MudItem>
+        }
+
+        <MudItem xs="12">
+            <MudStack Spacing="1" Row>
+                @if (ShowBack)
+                {
+                    <MudIconButton Variant="Variant.Text" Color="Color.Inherit" Icon="@Icons.Filled.ArrowBack"
+                                   OnClick="ShowList" />
+                }
+
+                <MudHidden Breakpoint="Breakpoint.SmAndDown">
+                    @if (Busy)
+                    {
+                        <MudText Typo="Typo.body2">@BusyMessage</MudText>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.h6" Style="flex-grow:1;">@World.DisplayName</MudText>
+                    }
+
+                </MudHidden>
+
+                <MudSpacer />
+
+                @if (World.Name == ActiveWorldName)
+                {
+                    <MudTooltip Text="Active">
+                        <MudIconButton Icon="@Icons.Filled.CheckCircle" Color="Color.Success" Disabled />
+                    </MudTooltip>
+                }
+                else
+                {
+                    <MudTooltip Text="@(Server.ServerRunning ? "Switch (restarts server)" : "Activate")">
+                        <MudIconButton Icon="@Icons.Filled.RadioButtonUnchecked"
+                                       OnClick="@(() => OnSelectWorld.InvokeAsync(World))" Disabled="@Busy" />
+                    </MudTooltip>
+                }
+
+                <MudTooltip Text="Import Pack">
+                    <MudFileUpload T="IBrowserFile" FilesChanged="@(f => ImportPack(PackKind.Behavior, f))"
+                                   Accept=".mcpack,.mcaddon,.zip" MaximumFileCount="1"
+                                   Disabled="@(Busy || (World?.Name == ActiveWorldName && Server.ServerRunningStatus))">
+                        <CustomContent>
+                            <MudIconButton Icon="@Icons.Rounded.Download" Color="Color.Inherit"
+                                           OnClick="@context.OpenFilePickerAsync"
+                                           Disabled="@(Busy || (World?.Name == ActiveWorldName && Server.ServerRunningStatus))" />
+                        </CustomContent>
+                    </MudFileUpload>
+                </MudTooltip>
+
+                <MudTooltip Text="Export World">
+                    <MudMenu Label="Export" Color="Color.Info" Icon="@Icons.Rounded.CloudUpload"
+                             Disabled="@(Busy || (World?.Name == ActiveWorldName && Server.ServerRunningStatus))">
+                        <MudMenuItem Label=".zip" OnClick="@(() => ExportWorld(WorldArchiveFormat.Zip))" />
+                        <MudMenuItem Label=".tar.gz" OnClick="@(() => ExportWorld(WorldArchiveFormat.TarGz))" />
+                        <MudMenuItem Label=".mcworld" OnClick="@(() => ExportWorld(WorldArchiveFormat.McWorld))" />
+                    </MudMenu>
+                </MudTooltip>
+
+                <MudTooltip Text="Trim chunks">
+                    <MudIconButton Color="Color.Warning" Icon="@Icons.Rounded.Crop" OnClick="TrimWorld_Click"
+                                   Disabled="@(Busy || (World?.Name == ActiveWorldName && Server.ServerRunningStatus))" />
+                </MudTooltip>
+                
+                <MudTooltip Text="Delete World">
+                    <MudIconButton Color="Color.Error" Icon="@Icons.Rounded.Delete" OnClick="DeleteWorld_Click"
+                                   Disabled="@(Busy || (World?.Name == ActiveWorldName && Server.ServerRunningStatus))" />
+                </MudTooltip>
+            </MudStack>
+        </MudItem>
+    
+
+        <MudHidden Breakpoint="Breakpoint.MdAndUp">
+            <MudItem xs="12">
+                <MudStack>
+                    @if (Busy)
+                    {
+                        <MudText Typo="Typo.body2">@BusyMessage</MudText>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.h6" Style="flex-grow:1;">@World.DisplayName</MudText>
+                    }
+
+                    <MudDivider />
+                </MudStack>
+            </MudItem>
+        </MudHidden>
+
+        <MudItem xs="12" Style="align-content: center;">
+            <MudText Typo="Typo.h6">Resource Packs (@World.ResourcePacks.Count)</MudText>
+        </MudItem>
+
+        <MudItem xs="12">
+            <MudStack Spacing="4">
+                <MudTable Items="@World.ResourcePacks" Dense Hover>
+                    <HeaderContent>
+                        <MudTh>Name</MudTh>
+                        <MudTh Style="width: 110px; text-align: right;">Version</MudTh>
+                        <MudTh Style="width: 110px; text-align: right;">Size</MudTh>
+                        <MudTh Style="width: 110px;" />
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Name">@context.DisplayName</MudTd>
+                        <MudTd DataLabel="Version" Style="text-align:right; min-width: 110px; flex-grow: 1;">
+                            @context.DisplayVersion
+                        </MudTd>
+                        <MudTd DataLabel="Size" Style="text-align:right; min-width: 110px; flex-grow: 1;">
+                            @Plugins.OtherHelpers.FormatSize(context.SizeBytes)
+                        </MudTd>
+                        <MudTd Style="text-align:right; min-width: 110px; flex-grow: 1;">
+                            <MudStack Row Justify="Justify.FlexEnd">
+                                <MudTooltip Text="Export Pack">
+                                    <MudIconButton Size="Size.Small" Icon="@Icons.Rounded.Upload" Color="Color.Info"
+                                                   OnClick="@(() => ExportPack(PackKind.Resource, context.Name))" Disabled="@Busy" />
+                                </MudTooltip>
+                                <MudTooltip Text="Delete Pack">
+                                    <MudIconButton Size="Size.Small" Color="Color.Error" Icon="@Icons.Rounded.Delete"
+                                                   OnClick="@(() => DeletePack(PackKind.Resource, context.Name))"
+                                                   Disabled="@(Busy || (World?.Name == ActiveWorldName && Server.ServerRunningStatus))" />
+                                </MudTooltip>
+                            </MudStack>
+                        </MudTd>
+                    </RowTemplate>
+                    <NoRecordsContent>
+                        <MudText Typo="Typo.body2">No resource packs in this world.</MudText>
+                    </NoRecordsContent>
+                </MudTable>
+            </MudStack>
+        </MudItem>
+    
+        <MudItem xs="12">
+            <MudDivider />
+        </MudItem>
+
+        <MudItem xs="12" Style="align-content: center;">
+            <MudText Typo="Typo.h6" Class="mt-2">Addons / Behavior Packs (@World.BehaviorPacks.Count)</MudText>
+        </MudItem>
+
+        <MudItem xs="12">
+            <MudTable Items="@World.BehaviorPacks" Dense Hover>
+                <HeaderContent>
+                    <MudTh>Name</MudTh>
+                    <MudTh Style="width: 110px; text-align: right;">Version</MudTh>
+                    <MudTh Style="width: 110px; text-align: right;">Size</MudTh>
+                    <MudTh Style="width: 110px;" />
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Name">@context.DisplayName</MudTd>
+                    <MudTd DataLabel="Version" Style="text-align:right; min-width: 110px; flex-grow: 1;">
+                        @context.DisplayVersion
+                    </MudTd>
+                    <MudTd DataLabel="Size" Style="text-align:right; min-width: 110px; flex-grow: 1;">
+                        @Plugins.OtherHelpers.FormatSize(context.SizeBytes)
+                    </MudTd>
+                    <MudTd Style="text-align:right; min-width: 110px; flex-grow: 1;">
+                        <MudStack Row Justify="Justify.FlexEnd">
+                            <MudTooltip Text="Export Pack">
+                                <MudIconButton Size="Size.Small" Icon="@Icons.Rounded.Upload" Color="Color.Info"
+                                               OnClick="@(() => ExportPack(PackKind.Behavior, context.Name))" Disabled="@Busy" />
+                            </MudTooltip>
+                            <MudTooltip Text="Delete Pack">
+                                <MudIconButton Size="Size.Small" Color="Color.Error" Icon="@Icons.Rounded.Delete"
+                                               OnClick="@(() => DeletePack(PackKind.Behavior, context.Name))"
+                                               Disabled="@(Busy || (World?.Name == ActiveWorldName && Server.ServerRunningStatus))" />
+                            </MudTooltip>
+                        </MudStack>
+                    </MudTd>
+                </RowTemplate>
+                <NoRecordsContent>
+                    <MudText Typo="Typo.body2">No addons in this world.</MudText>
+                </NoRecordsContent>
+            </MudTable>
+        </MudItem>
+    </MudGrid>
+    
+@code {
+    [Parameter]
+    public WorldInfo? World
+    {
+        get => _world;
+        set
+        {
+            if (_world == value) return;
+            _world = value;
+            WorldChanged.InvokeAsync(value);
+        }
+    }
+    private WorldInfo? _world { get; set; } = default;
+    [Parameter]
+    public EventCallback<WorldInfo?> WorldChanged { get; set; }
+
+    [Parameter]
+    public string? ActiveWorldName
+    {
+        get => _activeWorldName;
+        set
+        {
+            if (_activeWorldName == value) return;
+            _activeWorldName = value;
+            ActiveWorldNameChanged.InvokeAsync(value);
+        }
+    }
+    private string? _activeWorldName = default;
+    [Parameter]
+    public EventCallback<string?> ActiveWorldNameChanged { get; set; }
+
+    [Parameter]
+    public bool Busy
+    {
+        get => _busy;
+        set
+        {
+            if (_busy == value) return;
+            _busy = value;
+            BusyChanged.InvokeAsync(value);
+        }
+    }
+    private bool _busy = default;
+    [Parameter]
+    public EventCallback<bool> BusyChanged { get; set; }
+    [Parameter]
+    public string BusyMessage
+    {
+        get => _busyMessage;
+        set
+        {
+            if (_busyMessage == value) return;
+            _busyMessage = value;
+            BusyMessageChanged.InvokeAsync(value);
+        }
+    }
+    private string _busyMessage = string.Empty;
+    [Parameter]
+    public EventCallback<string> BusyMessageChanged { get; set; }
+
+    [Parameter, EditorRequired]
+    public BedrockServer Server { get; set; } = null!;
+    [Parameter]
+    public bool ShowBack { get; set; } = false;
+
+    [Parameter]
+    public EventCallback OnStateHasChanged { get; set; }
+    [Parameter]
+    public EventCallback Refresh { get; set; }
+    [Parameter]
+    public EventCallback<WorldInfo> OnSelectWorld { get; set; }
+
+    private void UpdateState()
+    {
+        StateHasChanged();
+        OnStateHasChanged.InvokeAsync();
+    }
+
+    public void ShowList()
+    {
+        World = null;
+    }
+
+    private async Task ExportWorld(WorldArchiveFormat format)
+    {
+        if (World is null) return;
+        Busy = true;
+        BusyMessage = $"Exporting {World.Name}...";
+        try
+        {
+            var (stream, fileName) = await Server.ExportWorldAsync(World.Name, format);
+            await using (stream)
+                await DownloadAsync(fileName, stream);
+            Snackbar.Add($"Exported {fileName}", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"World export failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            Busy = false;
+            UpdateState();
+        }
+    }
+
+    private void DeleteWorld_Click()
+    {
+        if (World is null) return;
+        try
+        {
+            Server.DeleteWorld(World.Name);
+            Snackbar.Add($"Deleted world {World.Name}", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Delete failed: {ex.Message}", Severity.Error);
+        }
+        Refresh.InvokeAsync();
+    }
+
+    private async Task TrimWorld_Click()
+    {
+        if (World is null || Busy) return;
+        var parameters = new DialogParameters
+        {
+            { nameof(TrimWorldDialog.WorldName), World.Name },
+        };
+        var dialog = await DialogService.ShowAsync<TrimWorldDialog>($"Trim {World.Name}", parameters, new DialogOptions
+        {
+            CloseOnEscapeKey = true
+        });
+        var result = await dialog.Result;
+        if (result?.Canceled != false || result.Data is not TrimOptions trim) return;
+
+        if (trim.DryRun)
+        {
+            Busy = true;
+            BusyMessage = $"Scanning {trim.WorldName}...";
+            try
+            {
+                var scan = await Server.ScanAsync(trim);
+                Snackbar.Add(
+                    $"Scan [{scan.Dimension}] keep {scan.KeepArea}: would delete {scan.DeletedKeys} keys " +
+                    $"({scan.DistinctChunksDeleted} chunks), keep {scan.DistinctChunksKept} chunks.",
+                    Severity.Info);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Trim scan failed: {ex.Message}", Severity.Error);
+            }
+            finally
+            {
+                Busy = false;
+                UpdateState();
+            }
+        }
+        else
+        {
+            Server.TrimServer(trim);
+            Snackbar.Add($"Trim of {trim.WorldName} started — watch the console for progress.", Severity.Warning);
+        }
+    }
+
+    private async Task ImportPack(PackKind kind, IBrowserFile? file)
+    {
+        if (file is null || World is null) return;
+        Busy = true;
+        BusyMessage = $"Importing {file.Name}...";
+        StagedPackImport? staged = null;
+        try
+        {
+            await using var stream = file.OpenReadStream(maxAllowedSize: 512L * 1024 * 1024);
+            using var copy = new MemoryStream();
+            await stream.CopyToAsync(copy);
+            copy.Seek(0, SeekOrigin.Begin);
+            staged = await Server.StagePackImportAsync(World.Name, kind, copy, file.Name);
+            if (staged.Packs.Count == 0)
+                throw new InvalidDataException($"No recognizable pack in '{file.Name}'. Expected a manifest.json.");
+
+            var summaries = new List<string>();
+            var serverVersion = Server.Settings.Version;
+            foreach (var pack in staged.Packs.ToList())
+            {
+                if (pack.Manifest?.MinEngineVersion is { Length: > 0 } minEngine &&
+                    !BedrockResourceService.IsEngineCompatible(minEngine, serverVersion) &&
+                    !string.IsNullOrWhiteSpace(serverVersion))
+                {
+                    Snackbar.Add(
+                        $"'{BedrockResourceService.CleanDisplayText(pack.Manifest?.Name) ?? pack.CandidateName}' " +
+                        $"needs engine v{BedrockResourceService.FormatVersion(minEngine)} but the server is v{serverVersion}. " +
+                        "BDS will ignore it until the server is updated.",
+                        Severity.Warning);
+                }
+                PackConflictChoice choice = PackConflictChoice.Update;
+                if (pack.Existing is not null && pack.Manifest?.PackId.HasValue == true)
+                {
+                    // Same uuid as an installed pack: ask whether this is an update
+                    // or a different pack reusing the uuid.
+                    var answer = await AskPackConflictAsync(file.Name, pack);
+                    if (answer is null)
+                    {
+                        summaries.Add($"Skipped {pack.CandidateName}");
+                        continue;
+                    }
+                    choice = answer.Value;
+                }
+                var result = await Server.CommitStagedPackAsync(World.Name, staged, pack, choice);
+                summaries.Add(DescribeImport(result));
+            }
+            Snackbar.Add(string.Join("; ", summaries), Severity.Success);
+            _ = Refresh.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Pack import failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            if (staged is not null)
+                BedrockResourceService.DiscardStagedImport(staged);
+            Busy = false;
+            UpdateState();
+        }
+    }
+
+    private async Task<PackConflictChoice?> AskPackConflictAsync(string fileName, StagedPack pack)
+    {
+        var existing = pack.Existing!;
+        var parameters = new DialogParameters
+        {
+            { nameof(PackConflictDialog.FileName), fileName },
+            { nameof(PackConflictDialog.ExistingDisplayName), existing.DisplayName },
+            { nameof(PackConflictDialog.ExistingVersion), existing.DisplayVersion },
+            { nameof(PackConflictDialog.ExistingFolder), existing.Name },
+            { nameof(PackConflictDialog.IncomingDisplayName),
+                BedrockResourceService.CleanDisplayText(pack.Manifest?.Name) ?? pack.CandidateName },
+            { nameof(PackConflictDialog.IncomingVersion),
+                BedrockResourceService.FormatVersion(pack.Manifest?.Version) },
+            { nameof(PackConflictDialog.Kind), pack.Kind },
+            { nameof(PackConflictDialog.PackId), pack.Manifest?.PackId?.ToString() ?? "" },
+            { nameof(PackConflictDialog.VersionHint), BuildVersionHint(existing, pack) },
+        };
+        var dialog = await DialogService.ShowAsync<PackConflictDialog>(
+            "Pack already installed", parameters, new DialogOptions { CloseOnEscapeKey = true });
+        var result = await dialog.Result;
+        if (result?.Canceled != false || result.Data is not PackConflictChoice choice)
+            return null;
+        return choice;
+    }
+
+    private static string? BuildVersionHint(PackInfo existing, StagedPack pack)
+    {
+        var cmp = BedrockResourceService.CompareVersions(pack.Manifest?.Version, existing.Version);
+        return cmp switch
+        {
+            > 0 => $"The upload (v{BedrockResourceService.FormatVersion(pack.Manifest?.Version)}) is newer than the installed pack (v{existing.DisplayVersion}).",
+            < 0 => $"The upload (v{BedrockResourceService.FormatVersion(pack.Manifest?.Version)}) is older than the installed pack (v{existing.DisplayVersion}).",
+            _ => "Both packs report the same version. Updating still refreshes the installed files.",
+        };
+    }
+
+    private static string DescribeImport(PackImportResult result) => result.Outcome switch
+    {
+        PackImportOutcome.Updated =>
+            $"Updated {result.PackName}: v{BedrockResourceService.FormatVersion(result.OldVersion)} → v{BedrockResourceService.FormatVersion(result.NewVersion)}",
+        PackImportOutcome.Downgraded =>
+            $"Replaced {result.PackName} with older v{BedrockResourceService.FormatVersion(result.NewVersion)}",
+        PackImportOutcome.SameVersion =>
+            $"Reinstalled {result.PackName} v{BedrockResourceService.FormatVersion(result.NewVersion)}",
+        PackImportOutcome.InstalledAsCopy =>
+            $"Installed {result.PackName} v{BedrockResourceService.FormatVersion(result.NewVersion)} as a separate pack (new ID)",
+        _ => $"Installed {result.PackName} v{BedrockResourceService.FormatVersion(result.NewVersion)}",
+    };
+
+    private async Task ExportPack(PackKind kind, string packName)
+    {
+        if (World is null) return;
+        Busy = true;
+        try
+        {
+            var (stream, fileName) = await Server.ExportPackAsync(World.Name, kind, packName);
+            await using (stream)
+                await DownloadAsync(fileName, stream);
+            Snackbar.Add($"Exported {fileName}", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Pack export failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            Busy = false;
+            UpdateState();
+        }
+    }
+
+    private void DeletePack(PackKind kind, string packName)
+    {
+        if (World is null) return;
+        try
+        {
+            Server.DeletePack(World.Name, kind, packName);
+            Snackbar.Add($"Deleted {packName}", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Delete failed: {ex.Message}", Severity.Error);
+        }
+        Refresh.InvokeAsync();
+    }
+
+    private async Task DownloadAsync(string fileName, Stream content)
+    {
+        content.Seek(0, SeekOrigin.Begin);
+        var streamRef = new DotNetStreamReference(content, leaveOpen: true);
+        await JS.InvokeVoidAsync("downloadFileFromStream", fileName, streamRef);
+    }
+}

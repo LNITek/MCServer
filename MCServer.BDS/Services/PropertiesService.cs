@@ -1,7 +1,7 @@
-using System.Text.Json;
 using ExtraFunctions.Extras;
 using MCServer.Plugins;
 using MudBlazor;
+using Newtonsoft.Json;
 
 namespace MCServer.BDS.Services;
 
@@ -25,7 +25,12 @@ public static class BedrockPropertiesService
         if (!File.Exists(server?.ServerPath + "/server.properties"))
             server?.Host.NotifyUser("Server Properties: Could not find server properties file!", Severity.Error);
         else using (var Writer = File.CreateText(server.ServerPath + "/server.properties"))
-            foreach (var prop in Properties.OrderBy(x => x.Order))
+            // Dedupe defensively (last value wins, matching BDS): a doubled file once made
+            // BDS boot the wrong world because a stale level-name shadowed the active one.
+            foreach (var prop in Properties
+                .GroupBy(p => p.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(g => g.Last())
+                .OrderBy(x => x.Order))
             {
                 Writer.WriteLine("");
                 Writer.WriteLine($"{prop.Name}={prop.Value}");
@@ -42,6 +47,7 @@ public static class BedrockPropertiesService
     public static List<Property> ReadProperties(StreamReader Reader)
     {
         List<Property> Properties = [];
+
         double I = 0;
 
         while (!Reader.EndOfStream)
@@ -60,7 +66,18 @@ public static class BedrockPropertiesService
 
                 Line = Reader.ReadLine();
             }
-            Properties.Add(new Property(Prop[0].Trim(), Prop[1].Trim(), Com) { Order = I++, Mode = Mode });
+            // Collapse duplicate keys (last value wins, matching BDS) so callers
+            // can never update one copy while a stale twin shadows it.
+            var existing = Properties.FirstOrDefault(p => p.Name.Equals(Prop[0].Trim(), StringComparison.OrdinalIgnoreCase));
+            if (existing is null)
+                Properties.Add(new Property(Prop[0].Trim(), Prop[1].Trim(), Com) { Order = I++, Mode = Mode });
+            else
+            {
+                existing.Value = Prop[1].Trim();
+                existing.Mode = Mode;
+                if (Com.Count > 0)
+                    existing.Comments = Com;
+            }
         }
 
         return Properties;
@@ -80,7 +97,7 @@ public static class BedrockPropertiesService
                 Players.Add(new(item.name, item.xuid)
                 {
                     Ban = item.Ban,
-                    BanResion = item.BanResion,
+                    BanResin = item.BanResion,
                     BanTime = item.BanTime,
                     LastLogin = item.LastLogin,
                     TotalPlayTime = item.TotalPlayTime,
@@ -89,7 +106,7 @@ public static class BedrockPropertiesService
             else
             {
                 player.Ban = item.Ban;
-                player.BanResion = item.BanResion;
+                player.BanResin = item.BanResion;
                 player.BanTime = item.BanTime;
                 player.LastLogin = item.LastLogin;
                 player.TotalPlayTime = item.TotalPlayTime;
@@ -128,11 +145,11 @@ public static class BedrockPropertiesService
 
     public static void SetPlayers(this BedrockServer server, IEnumerable<Player> Players)
     {
-        var json = JsonSerializer.Serialize(Players.Select(x => x.AsConfig()));
+        var json = JsonConvert.SerializeObject(Players.Select(x => x.AsConfig()), JsonOptions.SerializerSettings);
         File.WriteAllText(server.ServerPath + "/players.json", json);
-        json = JsonSerializer.Serialize(Players.Where(x => x.WhiteList).Select(x => x.AsAllowList()));
+        json = JsonConvert.SerializeObject(Players.Where(x => x.WhiteList).Select(x => x.AsAllowList()));
         File.WriteAllText(server.ServerPath + "/allowlist.json", json);
-        json = JsonSerializer.Serialize(Players.Select(x => x.AsPermission()));
+        json = JsonConvert.SerializeObject(Players.Select(x => x.AsPermission()));
         File.WriteAllText(server.ServerPath + "/permissions.json", json);
     }
 
@@ -142,8 +159,11 @@ public static class BedrockPropertiesService
         {
             return [];
         }
-        var permissions = JsonSerializer.Deserialize<Player.Config[]>
-            (File.Open(server.ServerPath + "/players.json", FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
+        using var stream = File.Open(server.ServerPath + "/players.json", FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        using var reader = new StreamReader(stream);
+        using var jsonReader = new JsonTextReader(reader);
+        var serializer = JsonSerializer.Create(JsonOptions.SerializerSettings);
+        var permissions = serializer.Deserialize<Player.Config[]>(jsonReader);
 
         return [.. permissions?.OfType<Player.Config>() ?? []];
     }
@@ -155,8 +175,8 @@ public static class BedrockPropertiesService
             return [];
         }
 
-        var allowLists = JsonSerializer.Deserialize<Player.AllowList[]>
-            (File.Open(server.ServerPath + "/allowlist.json", FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
+        var json = File.ReadAllText(server.ServerPath + "/allowlist.json");
+        var allowLists = JsonConvert.DeserializeObject<Player.AllowList[]>(json);
 
         return [.. allowLists?.OfType<Player.AllowList>() ?? []];
     }
@@ -167,8 +187,8 @@ public static class BedrockPropertiesService
         {
             return [];
         }
-        var permissions = JsonSerializer.Deserialize<Player.Permission[]>
-            (File.Open(server.ServerPath + "/permissions.json", FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
+        var json = File.ReadAllText(server.ServerPath + "/permissions.json");
+        var permissions = JsonConvert.DeserializeObject<Player.Permission[]>(json);
 
         return [.. permissions?.OfType<Player.Permission>() ?? []];
     }
@@ -184,14 +204,14 @@ public static class BedrockPropertiesService
             return new();
         }
 
-        return JsonSerializer.Deserialize<PacketConfig>
-            (File.Open(server.ServerPath + "/packetlimitconfig.json", FileMode.Open, FileAccess.Read, FileShare.ReadWrite)) ?? new();
+        var json = File.ReadAllText(server.ServerPath + "/packetlimitconfig.json");
+        return JsonConvert.DeserializeObject<PacketConfig>(json) ?? new();
     }
 
     public static void SetPacketConfig(this BedrockServer server, PacketConfig config)
     {
         if (server is null) return;
-        var json = JsonSerializer.Serialize(config);
+        var json = JsonConvert.SerializeObject(config);
         File.WriteAllText(server.ServerPath + "/packetlimitconfig.json", json);
     }
 

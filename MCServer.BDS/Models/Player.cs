@@ -27,7 +27,7 @@ namespace MCServer.BDS
 
         public bool Ban { get; set; } = false;
         public DateTime? BanTime { get; set; } = null;
-        public string BanResion { get; set; } = string.Empty;
+        public string BanResin { get; set; } = string.Empty;
         public DateTime? LastLogin { get; set; } = null;
         public TimeSpan TotalPlayTime { get; set; } = TimeSpan.Zero;
 
@@ -74,7 +74,7 @@ namespace MCServer.BDS
         {
             Ban = Ban,
             BanTime = BanTime,
-            BanResion = BanResion,
+            BanResion = BanResin,
             LastLogin = LastLogin,
             TotalPlayTime = TotalPlayTime,
             name = name,

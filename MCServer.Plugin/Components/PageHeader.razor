@@ -1,0 +1,42 @@
+@namespace MCServer.Plugins
+@inject PageHeaderService HeaderService
+@implements IDisposable
+
+@code {
+    /// <summary>
+    /// Plain-text header. Rendered by the layout with its default MudText style.
+    /// Ignored when <see cref="ChildContent"/> is provided.
+    /// </summary>
+    [Parameter] public string? Title { get; set; }
+
+    /// <summary>
+    /// Custom header control. When set it is rendered as-is instead of <see cref="Title"/>.
+    /// </summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private string? _appliedTitle;
+    private RenderFragment? _appliedContent;
+
+    protected override void OnParametersSet()
+    {
+        if (ChildContent is not null)
+        {
+            _appliedContent = ChildContent;
+            _appliedTitle = null;
+            HeaderService.SetHeader(_appliedContent);
+        }
+        else
+        {
+            _appliedTitle = Title;
+            _appliedContent = null;
+            HeaderService.SetTitle(_appliedTitle);
+        }
+    }
+
+    public void Dispose()
+    {
+        // Only clear if we still own the header (prevents an old page
+        // wiping a newer page's header when dispose runs late).
+        HeaderService.ClearIf(_appliedTitle, _appliedContent);
+    }
+}

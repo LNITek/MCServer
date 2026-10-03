@@ -296,23 +296,85 @@
             return;
         }
 
-        var parameters = new DialogParameters
+        // 1. Select the server plugin.
+        IGameServerPlugin? plugin;
+        if (Plugins.ServerPlugins.Count == 1)
         {
-            { nameof(EditTextDialog.Value), $"Server {Servers.Count + 1}" },
-        };
-        var dialog = await DialogService.ShowAsync<EditTextDialog>("Add Server", parameters, new DialogOptions { CloseOnEscapeKey = true });
-        var result = await dialog.Result;
-        if (result is null || result.Canceled || result.Data is not string name || string.IsNullOrWhiteSpace(name))
+            plugin = Plugins.ServerPlugins[0];
+        }
+        else
+        {
+            var pickParameters = new DialogParameters
+            {
+                { nameof(SelectPluginDialog.Plugins), Plugins.ServerPlugins },
+            };
+            var pickDialog = await DialogService.ShowAsync<SelectPluginDialog>(
+                "Select Server Type", pickParameters, new DialogOptions { CloseOnEscapeKey = true });
+            var pickResult = await pickDialog.Result;
+            if (pickResult is null || pickResult.Canceled || pickResult.Data is not string serverType)
+                return;
+
+            plugin = Plugins.FindPlugin(serverType);
+            if (plugin is null)
+            {
+                Program.NotifyUser($"Server type '{serverType}' is not supported.", Severity.Error);
+                return;
+            }
+        }
+
+        // 2. Let the plugin create the server (own dialog, downloads, ...).
+        ServerSettings? settings;
+        try
+        {
+            settings = await plugin.CreateServerAsync(ServerHost, DialogService);
+        }
+        catch (Exception ex)
+        {
+            Program.NotifyUser($"Failed to create server: {ex.Message}", Severity.Error);
             return;
+        }
 
-        // TODO: let the user pick the server type when more than one plugin is installed.
-        var plugin = Plugins.ServerPlugins[0];
-        var settings = new ServerSettings
+        if (settings is null)
+            return; // User cancelled in the plugin dialog.
+
+        // 3. Fall back to a name prompt for plugins without creation UI.
+        if (string.IsNullOrWhiteSpace(settings.Name))
         {
-            Name = name.Trim(),
-            Type = plugin.ServerType,
-        };
+            var nameParameters = new DialogParameters
+            {
+                { nameof(EditTextDialog.Value), $"Server {Servers.Count + 1}" },
+            };
+            var nameDialog = await DialogService.ShowAsync<EditTextDialog>("Add Server", nameParameters, new DialogOptions { CloseOnEscapeKey = true });
+            var nameResult = await nameDialog.Result;
+            if (nameResult is null || nameResult.Canceled || nameResult.Data is not string name || string.IsNullOrWhiteSpace(name))
+                return;
 
+            settings.Name = name.Trim();
+        }
+        else
+        {
+            settings.Name = settings.Name.Trim();
+        }
+
+        if (Plugins.FindPlugin(settings.Type) is null)
+        {
+            Program.NotifyUser($"Server type '{settings.Type}' is not supported.", Severity.Error);
+            return;
+        }
+
+        if (GameServers.Any(s => s.Settings.Name.Equals(settings.Name, StringComparison.OrdinalIgnoreCase)))
+        {
+            Program.NotifyUser($"A server named '{settings.Name}' already exists.", Severity.Error);
+            return;
+        }
+
+        if (GameServers.FindByID(settings.ID) is not null)
+        {
+            Program.NotifyUser($"A server with the same ID already exists.", Severity.Error);
+            return;
+        }
+
+        // 4. Register + persist.
         try
         {
             GameServers.Register(settings, ServerHost);

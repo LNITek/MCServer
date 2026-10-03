@@ -15,14 +15,14 @@ public static class BedrockProcessService
     {
         if ((server.ServerThread?.ThreadState ?? System.Threading.ThreadState.Stopped) != System.Threading.ThreadState.Running)
         {
-            server.ServerThread = new(() => Start(server)) { Name = "ServerThread", };
+            server.ServerThread = new(async () => await Start(server)) { Name = "ServerThread", };
             server.ServerThread.Start();
         }
     }
 
-    private static void Start(this BedrockServer server)
+    private static async Task Start(this BedrockServer server)
     {
-        MaintenanceService.UpdateTask(server);
+        await MaintenanceService.UpdateTask(server);
 
         server.StartupDate = DateTime.Today;
         if (server.CommandRunning) return;

@@ -1,0 +1,13 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Fragment>
+    <!-- Per-machine x64: C:\Program Files\MCServer\ -->
+    <StandardDirectory Id="ProgramFiles6432Folder">
+      <Directory Id="INSTALLFOLDER" Name="MCServer" />
+    </StandardDirectory>
+
+    <!-- Start Menu: MCServer -->
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="ApplicationProgramsFolder" Name="MCServer" />
+    </StandardDirectory>
+  </Fragment>
+</Wix>

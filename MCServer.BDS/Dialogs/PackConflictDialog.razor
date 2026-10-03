@@ -1,0 +1,79 @@
+@using MCServer.BDS.Services
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3" Style="max-width:520px;">
+            <MudAlert Severity="Severity.Warning" Variant="Variant.Text" Dense>
+                <b>@FileName</b> has the same pack ID as an installed pack.
+            </MudAlert>
+
+            <MudStack Spacing="1">
+                <MudText Typo="Typo.h6">Installed pack</MudText>
+                <MudText Typo="Typo.body2"><b>@ExistingDisplayName</b> V@(ExistingVersion)</MudText>
+                <MudText Typo="Typo.caption">Folder: @ExistingFolder &bull; ID: @PackId</MudText>
+            </MudStack>
+
+            <MudStack Spacing="1">
+                <MudText Typo="Typo.h6">Uploaded pack</MudText>
+                <MudText Typo="Typo.body2"><b>@IncomingDisplayName</b> V@(IncomingVersion)</MudText>
+                <MudText Typo="Typo.caption">Target: @(Kind == PackKind.Resource ? "resource_packs" : "behavior_packs")
+                </MudText>
+            </MudStack>
+
+            <MudDivider/>
+@* 
+            <MudText Typo="Typo.body2">
+                Is this an <b>update</b> of the installed pack, or a <b>different pack</b>
+                that happens to reuse the same ID?
+            </MudText> *@
+            @if (!string.IsNullOrWhiteSpace(VersionHint))
+            {
+                <MudText Typo="Typo.caption">@VersionHint</MudText>
+            }
+        </MudStack>
+    </DialogContent>
+
+    <DialogActions>
+            <MudButton OnClick="Cancel">Cancel</MudButton>
+            <MudButton Color="Color.Info" OnClick="KeepBoth">Keep</MudButton>
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Update">Update</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public string FileName { get; set; } = "";
+
+    [Parameter]
+    public string ExistingDisplayName { get; set; } = "";
+
+    [Parameter]
+    public string ExistingVersion { get; set; } = "0";
+
+    [Parameter]
+    public string ExistingFolder { get; set; } = "";
+
+    [Parameter]
+    public string IncomingDisplayName { get; set; } = "";
+
+    [Parameter]
+    public string IncomingVersion { get; set; } = "0";
+
+    [Parameter]
+    public PackKind Kind { get; set; }
+
+    [Parameter]
+    public string PackId { get; set; } = "";
+
+    [Parameter]
+    public string? VersionHint { get; set; }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Update() => MudDialog.Close(DialogResult.Ok(PackConflictChoice.Update));
+
+    private void KeepBoth() => MudDialog.Close(DialogResult.Ok(PackConflictChoice.KeepBoth));
+}

@@ -1,5 +1,5 @@
 using System.ComponentModel;
-using System.Text.Json.Serialization;
+using Newtonsoft.Json;
 using ExtraFunctions.ExGenerators;
 
 namespace MCServer.Plugins;
@@ -26,7 +26,7 @@ public partial class ServerSettings : INotifyPropertyChanged
     public string GetFullPath(string filesRoot)
     {
         if (string.IsNullOrEmpty(Path))
-            return System.IO.Path.Combine(filesRoot, Name);
+            Path = System.IO.Path.Combine(filesRoot, ID);
         return System.IO.Path.GetFullPath(Path);
     }
 

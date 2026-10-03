@@ -1,11 +1,11 @@
 using System.Formats.Tar;
 using System.IO.Compression;
 using System.Text;
-using System.Text.Json;
 using ExtraFunctions.Extras;
 using MCServer.BDS.Models;
 using MCServer.Plugins;
 using MudBlazor;
+using Newtonsoft.Json.Linq;
 
 namespace MCServer.BDS.Services;
 
@@ -47,7 +47,7 @@ public static class MaintenanceService
         var BackupPath = string.IsNullOrWhiteSpace(server.Host.BackupPath) ?
             Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) + "/MCBackups" :
             server.Host.BackupPath;
-        BackupPath = FormatBackupPath(server, BackupPath, WorldName);
+        BackupPath = OtherHelpers.FormatBackupPath(server, BackupPath, WorldName);
         var SourcePath = Path.Combine(server.ServerPath, "..", "Backups", WorldName);
 
         if (Directory.Exists(SourcePath)) Directory.Delete(SourcePath, true);
@@ -105,7 +105,7 @@ public static class MaintenanceService
         var BackupPath = string.IsNullOrWhiteSpace(server.Host.BackupPath) ?
             Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) + "/MCBackups" :
             server.Host.BackupPath;
-        BackupPath = FormatBackupPath(server, BackupPath, WorldName);
+        BackupPath = OtherHelpers.FormatBackupPath(server, BackupPath, WorldName);
         var SourcePath = Path.Combine(server.ServerPath, "..", "Backups", WorldName);
         Files = Files.Select(x => x.Replace('\\', '/').Replace(WorldName, "")).ToList();
 
@@ -140,15 +140,6 @@ public static class MaintenanceService
         server.WriteDisplayLine($"Backup Completed In ({Time})");
         server.CommandRunning = false;
         server.CommandQue.Release();
-    }
-
-    public static string FormatBackupPath(BedrockServer server, string BackupPath, string WorldName)
-    {
-        return BackupPath
-            .Replace("{ServerPath}", server.ServerPath)
-            .Replace("{ServerName}", server.Settings.Name)
-            .Replace("{ServerID}", server.Settings.ID)
-            .Replace("{WorldName}", WorldName);
     }
     #endregion
 
@@ -230,9 +221,8 @@ public static class MaintenanceService
         var restartServer = false;
         using var httpClient = new HttpClient() { Timeout = TimeSpan.FromSeconds(10) };
         var api = await httpClient.GetStringAsync("https://net-secondary.web.minecraft-services.net/api/v1.0/download/links");
-        var links = JsonSerializer.Deserialize<JsonElement>(api)!.GetProperty("result").GetProperty("links")
-            .EnumerateArray().ToDictionary(x =>
-                x.GetProperty("downloadType").GetString() ?? "", x => x.GetProperty("downloadUrl").GetString());
+        var links = ((JObject.Parse(api)["result"]?["links"] as JArray) ?? [])
+            .ToDictionary(x => x["downloadType"]?.Value<string>() ?? "", x => x["downloadUrl"]?.Value<string>());
 
         string type = "serverBedrock";
         if (server.Settings.Preview) type += "Preview";
@@ -303,7 +293,7 @@ public static class MaintenanceService
         server.Progress.Show("UPDATING SERVER FILES...", true);
         server.WriteDisplayLine("UPDATING SERVER FILES...");
 
-        var UpdatePath = Path.Combine(server.ServerPath, "Downloads", type, FileName);
+        var UpdatePath = Path.Combine(server.ServerPath);
         if (Directory.Exists(UpdatePath)) Directory.Delete(UpdatePath, true);
         else Directory.CreateDirectory(UpdatePath);
 
@@ -379,6 +369,48 @@ public static class MaintenanceService
         }
     }
 
+    /// <summary>Newest Bedrock files downloaded by <see cref="InstallNewestAsync"/>.</summary>
+    public sealed record BedrockDownloadResult(string Version, string Url);
+
+    /// <summary>
+    /// Downloads the newest Bedrock server files into <paramref name="targetPath"/>
+    /// (fresh install: no config backup or property merge, unlike <see cref="UpdateTask"/>).
+    /// Reports 0-0.8 for download, 0.8-1 for extraction. Returns the downloaded
+    /// version. Throws on failure.
+    /// </summary>
+    public static async Task<BedrockDownloadResult> InstallNewestAsync(
+        string targetPath, bool preview, bool isWindows,
+        IProgress<double>? progress = null, CancellationToken cancellationToken = default)
+    {
+        using var httpClient = new HttpClient() { Timeout = TimeSpan.FromSeconds(10) };
+        var api = await httpClient.GetStringAsync(
+            "https://net-secondary.web.minecraft-services.net/api/v1.0/download/links", cancellationToken);
+        var links = ((JObject.Parse(api)["result"]?["links"] as JArray) ?? [])
+            .ToDictionary(x => x["downloadType"]?.Value<string>() ?? "", x => x["downloadUrl"]?.Value<string>());
+
+        string type = "serverBedrock";
+        if (preview) type += "Preview";
+        type += isWindows ? "Windows" : "Linux";
+
+        var url = links.GetValueOrDefault(type);
+        if (string.IsNullOrWhiteSpace(url))
+            throw new InvalidOperationException("No Bedrock download URL was published for this platform.");
+
+        var version = url.Split("bedrock-server-").LastOrDefault()?.Replace(".zip", "") ?? "0.0.0.0";
+
+        Directory.CreateDirectory(targetPath);
+
+        using var client = new HttpClient() { Timeout = TimeSpan.FromMinutes(10) };
+        var downloadProgress = new Progress<double>(p => progress?.Report(p * 0.8));
+        using var file = await client.DownloadAsync(url, downloadProgress, cancellationToken);
+
+        using var zip = new ZipArchive(file, ZipArchiveMode.Read);
+        var extractProgress = new Progress<double>(p => progress?.Report(0.8 + p * 0.2));
+        await zip.ExtractAsync(targetPath, extractProgress);
+
+        return new BedrockDownloadResult(version, url);
+    }
+
     #region Progress
     public static async Task<Stream> DownloadAsync(this HttpClient client, string requestUri, IProgress<double> progress = null, CancellationToken cancellationToken = default)
     {
@@ -397,7 +429,7 @@ public static class MaintenanceService
             if (contentLength.HasValue && progress != null)
             {
                 var progressPercentage = (double)Math.Round((decimal)totalBytesRead * 100 / contentLength.Value * 100, 2) / 100;
-                progress.Report(progressPercentage);
+                progress.Report(progressPercentage / 100);
             }
         }
         return destinationStream;
@@ -419,7 +451,7 @@ public static class MaintenanceService
                 extractedEntries++;
 
                 var progressPercentage = (double)Math.Round((decimal)extractedEntries * 100 / archive.Entries.Count * 100, 2) / 100;
-                progress?.Report(progressPercentage);
+                progress?.Report(progressPercentage / 100);
             }
         });
     }

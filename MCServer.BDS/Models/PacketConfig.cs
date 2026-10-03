@@ -1,6 +1,6 @@
 using System.Collections.ObjectModel;
-using System.Text.Json.Serialization;
 using ExtraFunctions.Extras;
+using Newtonsoft.Json;
 
 namespace MCServer.BDS;
 
@@ -51,7 +51,8 @@ public class PacketConfig
         [JsonIgnore]
         public AlgorithmType Type { get; set; } = AlgorithmType.BucketPacketLimitAlgorithm;
 
-        internal string name
+        [JsonProperty("name")]
+        public string name
         {
             get => Type.ToString();
             set
@@ -61,7 +62,7 @@ public class PacketConfig
             }
         }
 
-        [JsonPropertyName("params")]
+        [JsonProperty("params")]
         public Params Parameters { get; set; } = new();
 
         public class Params

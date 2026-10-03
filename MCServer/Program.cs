@@ -1,12 +1,12 @@
 using System.Security.Claims;
-using System.Text.Json;
-using System.Text.Json.Nodes;
 using MCServer;
 using MCServer.BDS;
 using MCServer.Components;
 using MCServer.Plugins;
 using MCServer.Server;
 using MCServer.Services;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.Extensions.Options;
@@ -20,12 +20,21 @@ public class Program
     public static string AssetsPath = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(Environment.ProcessPath) ?? ".", "Assets"));
 
 #if DEBUG
-    public static string ServerPath = Path.GetFullPath("./../Data/");
+    public static string RootPath = Path.GetFullPath("./../Data/");
 #else
-    public static string ServerPath = Path.GetFullPath(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MCServer/"));
+    public static string RootPath = Path.GetFullPath(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MCServer/"));
 #endif
 
-    public static string PluginsPath = Path.GetFullPath(Path.Combine(ServerPath, "Plugins"));
+    public static string ServerPath = Path.GetFullPath(Path.Combine(RootPath, "Servers"));
+    public static string PluginsPath = Path.GetFullPath(Path.Combine(RootPath, "Plugins"));
+
+    /// <summary>
+    /// User-data settings file (users, servers). Lives under the data folder:
+    /// writable without elevation and untouched by install/upgrade/uninstall.
+    /// The appsettings.json next to the binaries only provides install-time
+    /// defaults and is never written to by the app.
+    /// </summary>
+    public static string SettingsFilePath = Path.GetFullPath(Path.Combine(RootPath, "settings.json"));
 
     public static bool IsWin => OperatingSystem.IsWindows();
 
@@ -40,6 +49,11 @@ public class Program
 
     public static void Main(string[] args)
     {
+        // User data lives outside the install dir (Program Files is read-only
+        // for standard users and is replaced on upgrade). Ensure it exists for
+        // both the web host and the --reset-auth CLI below.
+        Directory.CreateDirectory(RootPath);
+
         // Host CLI: reset the admin login without starting the web server.
         // Usage: MCServer --reset-auth
         if (args.Any(a => a.Equals("--reset-auth", StringComparison.OrdinalIgnoreCase) ||
@@ -51,6 +65,10 @@ public class Program
         }
 
         var builder = WebApplication.CreateBuilder(args);
+
+        // Layer the data-folder settings over the shipped defaults so UI-saved
+        // users/servers win without ever writing into the install directory.
+        builder.Configuration.AddJsonFile(SettingsFilePath, optional: true, reloadOnChange: false);
 
         // Add services to the container.
         builder.Services
@@ -100,6 +118,7 @@ public class Program
         builder.Services.AddHostedService<ConsoleReaderService>();
         builder.Services.AddSingleton<ProcessMetricsService>();
         builder.Services.AddSingleton<HostMetricsService>();
+        builder.Services.AddScoped<PageHeaderService>();
 
         var app = builder.Build();
 
@@ -112,6 +131,7 @@ public class Program
 
         // Built-in server plugins ship with the app; external ones load from Plugins/.
         pluginService.RegisterBuiltIn(new BedrockPlugin());
+        pluginService.ProcessPendingDeletes();
         pluginService.LoadFromFolder();
 
         foreach (var plugin in pluginService.ServerPlugins)
@@ -232,21 +252,20 @@ public class Program
     }
 
     /// <summary>
-    /// Resets the Admin user to Admin/Admin by editing the settings JSON
-    /// directly (no web server needed). Never throws.
+    /// Resets the Admin user to Admin/Admin by editing the data-folder
+    /// settings file directly (no web server needed). Creates the file when
+    /// absent so a CLI reset works before the first web launch. Never throws.
     /// </summary>
     private static void ResetAdminViaCli()
     {
-#if DEBUG
-        var file = $"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Development"}.json";
-#else
-        var file = "appsettings.json";
-#endif
+        // Fresh start: the legacy install-dir appsettings files are
+        // install-time defaults only and are intentionally left alone.
+        var file = SettingsFilePath;
         try
         {
-            var defaultUsers = new JsonArray
+            var defaultUsers = new JArray
             {
-                new JsonObject
+                new JObject
                 {
                     ["Username"] = AuthService.DefaultUsername,
                     ["PasswordHash"] = PasswordHasher.Hash(AuthService.DefaultPassword),
@@ -254,23 +273,16 @@ public class Program
                 }
             };
 
-            if (!File.Exists(file))
-            {
-                Console.WriteLine($"Settings file '{file}' not found. Nothing to reset.");
-                Console.WriteLine($"On next start a default login {AuthService.DefaultUsername}/{AuthService.DefaultPassword} will be created automatically.");
-                return;
-            }
+            var root = File.Exists(file)
+                ? JObject.Parse(File.ReadAllText(file))
+                : new JObject();
 
-            var root = JsonNode.Parse(File.ReadAllText(file))?.AsObject();
-            if (root is null || !root.ContainsKey(AppSettings.SettingName))
-            {
-                Console.WriteLine($"No '{AppSettings.SettingName}' section in '{file}'. Nothing to reset.");
-                return;
-            }
-
-            var section = root[AppSettings.SettingName]!.AsObject();
+            var section = root[AppSettings.SettingName] as JObject ?? new JObject();
             section["Users"] = defaultUsers;
-            File.WriteAllText(file, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+            root[AppSettings.SettingName] = section;
+
+            Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+            File.WriteAllText(file, root.ToString(Formatting.Indented));
 
             Console.WriteLine($"Admin login in '{file}' has been reset to {AuthService.DefaultUsername}/{AuthService.DefaultPassword}.");
         }
@@ -282,7 +294,8 @@ public class Program
 
     private sealed class ServerHost : IServerHost
     {
-        public string ServerFilesRoot => ServerPath;
+        public string ServerFiles => ServerPath;
+        public string ServerFilesRoot => RootPath;
         public string BackupPath => Settings?.BackupPath ?? "";
         public bool IsWindows => IsWin;
         public void NotifyUser(string message, Severity severity) => Program.NotifyUser(message, severity);

@@ -7,7 +7,7 @@
 @inject IDialogService DialogService
 @inject IJSRuntime JS
 
-<PageTitle>MCServer - Files</PageTitle>
+<PageTitle>@(Server?.Settings.Name ?? "MCServer") - Files</PageTitle>
 
 @if (Server is null)
 {
@@ -183,7 +183,7 @@ else
                 </MudStack>
             </MudTd>
             <MudTd DataLabel="Size" Style="text-align:right; min-width: 160px; flex-grow: 1;">
-                @(context.IsDirectory ? "—" : FormatSize(context.SizeBytes))
+                @(context.IsDirectory ? "—" : Plugins.OtherHelpers.FormatSize(context.SizeBytes))
             </MudTd>
             <MudTd DataLabel="Modified" Style="text-align:right;">
                 @context.LastModified.ToLocalTime().ToString("g")
@@ -246,8 +246,15 @@ else
     private bool Busy;
     private string BusyMessage = "";
 
-    protected override void OnInitialized()
+    /// <summary>
+    /// Binds <see cref="Server"/> from the route. Runs on first render and
+    /// every time <c>serverId</c> changes (Blazor reuses this component
+    /// instance when navigating between servers).
+    /// </summary>
+    protected override void OnParametersSet()
     {
+        if (Server is not null && Server.Settings.ID == serverId) return;
+
         var server = GameServers.FindByID(serverId);
         if (server is null)
         {
@@ -255,16 +262,13 @@ else
             return;
         }
         Server = server;
+        CurrentPath = "";
+        FileSearch = "";
+        SelectedFiles.Clear();
+        Clipboard = [];
+        ClipboardIsCut = false;
         RefreshFiles();
     }
-
-    private static string FormatSize(long bytes) => bytes switch
-    {
-        < 1024 => $"{bytes} B",
-        < 1024 * 1024 => $"{bytes / 1024.0:F1} KB",
-        < 1024L * 1024 * 1024 => $"{bytes / (1024.0 * 1024):F1} MB",
-        _ => $"{bytes / (1024.0 * 1024 * 1024):F2} GB",
-    };
 
     private static string IconFor(string name) => Path.GetExtension(name).ToLowerInvariant() switch
     {

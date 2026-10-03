@@ -1,9 +1,11 @@
+@implements IDisposable
+
 <MudDialog>
     <TitleContent>
         @Progress.ToString()
     </TitleContent>
     <DialogContent>
-        <MudProgressLinear Value="@Progress.Value" Indeterminate="@Progress.Loading" 
+        <MudProgressLinear Value="@Progress.DisplayValue" Indeterminate="@Progress.Loading" 
                            Rounded Max="100" Min="0" Color="Color.Primary"/>
     </DialogContent>
 </MudDialog>
@@ -14,6 +16,20 @@
 
     [Parameter]
     public ProgressDisplay Progress { get; set; }
-    
+
+    protected override void OnInitialized()
+    {
+        Progress.PropertyChanged += OnProgressChanged;
+    }
+
+    private async void OnProgressChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) =>
+        await InvokeAsync(StateHasChanged);
+
     public void Finished() => MudDialog.Close();
+
+    public void Dispose()
+    {
+        if (Progress is not null)
+            Progress.PropertyChanged -= OnProgressChanged;
+    }
 }

@@ -110,6 +110,7 @@ public partial class BedrockServer
                 },
             },
         ]);
+
         Commands.OnCommandException += (command, ex) =>
         {
             if (ex.Message.StartsWith("C-01-"))

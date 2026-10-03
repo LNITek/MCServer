@@ -1,0 +1,143 @@
+@implements IDisposable
+
+<MudGrid Spacing="4">
+    @if (Schedule is null)
+    {
+        <MudItem xs="12">
+            <MudAlert Variant="Variant.Text" Severity="Severity.Info">Select a schedule or create a new one.</MudAlert>
+        </MudItem>
+        return;
+    }
+
+    <MudItem xs="12">
+        <MudStack Spacing="1" Row>
+            @if (ShowBack)
+            {
+                <MudIconButton Variant="Variant.Text" Color="Color.Inherit" Icon="@Icons.Filled.ArrowBack"
+                               OnClick="ShowList" />
+            }
+
+            <MudSpacer />
+
+            <MudIconButton Variant="Variant.Text" Color="Color.Info" Icon="@Icons.Rounded.Save" OnClick="Save" />
+            <MudIconButton Variant="Variant.Text" Color="Color.Error" Icon="@Icons.Rounded.Delete"
+                           OnClick="DeleteSchedule_Click" />
+        </MudStack>
+    </MudItem>
+
+    <MudItem xs="6" md="9">
+        <MudStack>
+            <MudSelect Variant="Variant.Outlined" T="ScheduleMode" Label="Mode" Style="width:300px"
+                       Value="@Schedule.Mode" ValueChanged="ScheduleModeChanged" FullWidth>
+                @foreach (var mode in Enum.GetValues<ScheduleMode>())
+                {
+                    <MudSelectItem Value="mode">@mode.ToString()</MudSelectItem>
+                }
+            </MudSelect>
+        </MudStack>
+    </MudItem>
+
+    <MudItem xs="6" md="3" Style="align-content: center;">
+        <MudSwitch T="bool" @bind-Value="Schedule.Enabled" Label="Enabled" />
+    </MudItem>
+
+    <MudItem xs="12">
+        <MudTextField Variant="Variant.Outlined" T="string" Label="Name" @bind-Value="Schedule.Name"></MudTextField>
+    </MudItem>
+    <MudItem xs="12">
+        <MudTextField Variant="Variant.Outlined" T="string" Style="min-height:150px" Label="Description"
+                      @bind-Value="Schedule.Description"></MudTextField>
+    </MudItem>
+
+    @if (Schedule.Mode is ScheduleMode.Once)
+    {
+        <MudItem xs="12" md="6">
+            <MudDatePicker Label="Date" Variant="Variant.Outlined"></MudDatePicker>
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudTimePicker Label="Time" Variant="Variant.Outlined"></MudTimePicker>
+        </MudItem>
+    }
+
+    @if (Schedule.Mode is ScheduleMode.Range)
+    {
+        <MudItem xs="12" md="6">
+            <MudDateRangePicker Label="Date" Variant="Variant.Outlined"></MudDateRangePicker>
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudTextField Variant="Variant.Outlined" T="string" Label="Cron Expression"></MudTextField>
+        </MudItem>
+    }
+    @if (Schedule.Mode is ScheduleMode.Indefinite)
+    {
+        <MudItem xs="12" md="6">
+            <MudDatePicker Label="Start Date" Variant="Variant.Outlined"></MudDatePicker>
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudTextField Variant="Variant.Outlined" T="string" Label="Cron Expression"></MudTextField>
+        </MudItem>
+    }
+</MudGrid>
+
+@code {
+    [Parameter]
+    public Schedule? Schedule
+    {
+        get => _schedule;
+        set
+        {
+            if (_schedule == value) return;
+            _schedule = value;
+            ScheduleChanged.InvokeAsync(value);
+        }
+    }
+    private Schedule? _schedule { get; set; } = default;
+    [Parameter]
+    public EventCallback<Schedule?> ScheduleChanged { get; set; }
+
+    [Parameter, EditorRequired]
+    public IGameServer Server { get; set; } = null!;
+    [Parameter]
+    public bool ShowBack { get; set; } = false;
+
+    [Parameter]
+    public EventCallback OnStateHasChanged { get; set; }
+
+    private void UpdateState()
+    {
+        StateHasChanged();
+        OnStateHasChanged.InvokeAsync();
+    }
+
+    public void ShowList()
+    {
+        Schedule = null;
+    }
+
+    public void Dispose()
+    {
+        Save();
+    }
+    
+    private void Save()
+    {
+        if (Server == null) return;
+        Server.SetSchedules(Server.ServerSchedules);
+        Server.RefreshSchedules();
+    }
+
+    private void DeleteSchedule_Click()
+    {
+        if (Server == null || Schedule == null) return;
+        Server.ServerSchedules.Remove(Schedule);
+        Schedule = null;
+        Save();
+        UpdateState();
+    }
+
+    private void ScheduleModeChanged(ScheduleMode mode)
+    {
+        Schedule?.mode = mode;
+        UpdateState();
+    }
+}
