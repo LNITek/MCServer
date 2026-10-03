@@ -15,8 +15,6 @@ Check the feature tables down below or find the [Documentation](https://github.c
 The [ChangeLog](ChangeLog.md) contains info around changes, fixes and new features.
 <br/>
 Have an issue or feature in mind don't hesitate to post them [here](https://github.com/LNITek/MCServer/issues).
-<br/>
-Any issue or feature for the `Base Software (Bedrock Dedicated Server)` can be reported here: [Issues](https://bugs.mojang.com/projects/BDS/issues/BDS) and [Features](https://feedback.minecraft.net/).
 
 
 ## Supported Platforms
@@ -79,4 +77,4 @@ The project is AI assisted. Not all code writen by AI has been audited.
 
 | Plugin | Description |
 |---|---|
-| [Bedrock Dedicated Server](MCServer.BDS/readme.md) | Manage Mojang Bedrock servers |
+| [Bedrock Dedicated Server](MCServer.BDS/README.md) | Manage Mojang Bedrock servers |
