@@ -1,0 +1,64 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+  <Fragment>
+    <!--
+      Harvested Blazor SSR publish output (see PublishMCServer target).
+      One component per file is generated under INSTALLFOLDER, preserving
+      the publish subfolder layout (wwwroot/, Assets/, runtimes/).
+      NOTE: appsettings.json harvests as a normal file (install-time defaults
+      only). Live user data (users, servers, worlds, backups, plugins) lives
+      outside Program Files in %AppData%\MCServer and survives upgrades.
+    -->
+    <ComponentGroup Id="MCServerFiles" Directory="INSTALLFOLDER">
+      <Files Include="!(bindpath.PublishDir)**">
+        <!-- Dev-only, never ship. -->
+        <Exclude Files="!(bindpath.PublishDir)appsettings.Development.json" />
+        <!-- Keep the MSI lean for production testing. -->
+        <Exclude Files="!(bindpath.PublishDir)**.pdb" />
+      </Files>
+    </ComponentGroup>
+
+    <!-- Start Menu shortcuts (no payload file: registry KeyPath). -->
+    <ComponentGroup Id="MCServerShortcuts" Directory="ApplicationProgramsFolder">
+      <Component Bitness="always64">
+        <Shortcut Name="MCServer"
+                  Target="[INSTALLFOLDER]MCServer.exe"
+                  WorkingDirectory="INSTALLFOLDER"
+                  Description="Start MCServer (Minecraft Bedrock management UI)" />
+        <Shortcut Name="MCServer (reset admin login)"
+                  Target="[INSTALLFOLDER]MCServer.exe"
+                  Arguments="--reset-auth"
+                  WorkingDirectory="INSTALLFOLDER"
+                  Description="Reset the Admin login to Admin/Admin without starting the web server" />
+        <RemoveFolder Id="RemoveAppProgramsFolder" Directory="ApplicationProgramsFolder" On="uninstall" />
+        <!-- HKCU KeyPath: required by ICE38/ICE43 for non-advertised per-user shortcuts. -->
+        <RegistryValue Root="HKCU"
+                       Key="SOFTWARE\MCServer"
+                       Name="Installed"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <!--
+      Removes the data folder (%AppData%\MCServer: settings, servers, worlds,
+      backups, plugins) on uninstall. Opt-in only:
+        msiexec /x {ProductCode} REMOVEDATA=1   (from an elevated prompt)
+      which then asks for confirmation in a dialog (silent uninstalls proceed
+      without prompting). Without the flag the property stays empty and
+      nothing is removed.
+    -->
+    <ComponentGroup Id="MCServerDataCleanup" Directory="INSTALLFOLDER">
+      <Component Bitness="always64">
+        <util:RemoveFolderEx Property="MCServerAppData" On="uninstall" />
+        <RegistryValue Root="HKLM"
+                       Key="SOFTWARE\MCServer"
+                       Name="DataCleanup"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+  </Fragment>
+</Wix>

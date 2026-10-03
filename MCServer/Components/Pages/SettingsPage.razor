@@ -1,0 +1,154 @@
+@page "/settings"
+@using Microsoft.Extensions.Options
+@implements IDisposable
+@inject IJSRuntime JS
+@inject IOptions<AppSettings> Config;
+@inject SettingsService SettingsStore;
+@inject AuthService Auth;
+@inject ISnackbar Snackbar
+
+<PageTitle>MCServer - Settings</PageTitle>
+
+<MudGrid Spacing="4">
+    @* <MudItem xs="12">
+        <MudStack Spacing="4">
+            <MudText Typo="Typo.h6">Personalisation</MudText>
+        </MudStack>
+    </MudItem>
+
+    <MudItem xs="12">
+        <MudStack Spacing="4">
+            <MudDivider />
+        </MudStack>
+    </MudItem> *@
+
+    <MudItem xs="12">
+        <MudStack Spacing="4">
+            <MudText Typo="Typo.h6">General</MudText>
+            <MudTextField Variant="Variant.Outlined" T="string" Label="Global Backup Path"
+                          @bind-Value="Settings.BackupPath"
+                          HelperText="The global location for storing world backups. Property helpers:" />
+
+            <MudText Typo="Typo.subtitle1">>{RootPath} : Path to host data root files</MudText>
+            <MudText Typo="Typo.subtitle1">>{ServerPath} : Path to server files</MudText>
+            <MudText Typo="Typo.subtitle2">>{ServerName} : The server name</MudText>
+            <MudText Typo="Typo.subtitle2">>{ServerID} : The server ID</MudText>
+            <MudText Typo="Typo.subtitle1">>{WorldName} : The world name.</MudText>
+        </MudStack>
+    </MudItem>
+    
+    <MudItem xs="12">
+        <MudStack Spacing="4">
+            <MudDivider />
+        </MudStack>
+    </MudItem>
+
+    <MudItem xs="12">
+        <MudStack Spacing="4">
+            <MudText Typo="Typo.h6">Login &amp; Security</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Signed in as <b>@Auth.AdminUser.Username</b>.
+            </MudText>
+
+            <MudTextField T="string" Label="New username" Variant="Variant.Outlined" @bind-Value="_newUsername"
+                          Placeholder="@Auth.AdminUser.Username" Disabled />
+            <MudTextField T="string" Label="Current password" Variant="Variant.Outlined" InputType="InputType.Password"
+                          @bind-Value="_currentPassword" />
+            <MudStack Row="true" Spacing="3" Breakpoint="Breakpoint.MdAndDown">
+                <MudTextField T="string" Label="New password" Variant="Variant.Outlined" InputType="InputType.Password"
+                              @bind-Value="_newPassword" />
+                <MudTextField T="string" Label="Confirm new password" Variant="Variant.Outlined"
+                              InputType="InputType.Password" @bind-Value="_confirmPassword" />
+            </MudStack>
+            @if (!string.IsNullOrEmpty(_authMessage))
+            {
+                <MudAlert Severity="@(_authOk ? Severity.Success : Severity.Error)" Dense="true">
+                    @_authMessage
+                </MudAlert>
+            }
+            <MudStack Row="true" Spacing="2" Breakpoint="Breakpoint.SmAndDown">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ChangeCredentials">
+                    Save login
+                </MudButton>
+                @if (Auth.AdminUser.Username == "Admin")
+                {
+                    <MudButton Variant="Variant.Outlined" Color="Color.Warning" OnClick="ResetCredentials">
+                        Reset Admin
+                    </MudButton>
+                }
+            </MudStack>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                Tip: locked out? Type reset-auth in the host terminal.
+            </MudText>
+        </MudStack>
+    </MudItem>
+</MudGrid>
+
+@code {
+    public AppSettings Settings = null!;
+
+    private string _newUsername = "Admin";
+    private string _currentPassword = "";
+    private string _newPassword = "";
+    private string _confirmPassword = "";
+    private string _authMessage = "";
+    private bool _authOk;
+
+    protected override void OnInitialized()
+    {
+        Settings = Config.Value;
+        base.OnInitialized();
+    }
+
+    private void ChangeCredentials()
+    {
+        _authOk = false;
+        _authMessage = "";
+
+        if (string.IsNullOrEmpty(_currentPassword))
+        {
+            _authMessage = "Enter your current password to confirm changes.";
+            return;
+        }
+
+        if (!string.IsNullOrEmpty(_newPassword) && _newPassword != _confirmPassword)
+        {
+            _authMessage = "New passwords do not match.";
+            return;
+        }
+
+        var result = Auth.ChangeAdminCredentials(_currentPassword, _newUsername, _newPassword);
+        _authOk = result.Ok;
+        _authMessage = result.Message;
+
+        if (result.Ok)
+        {
+            Snackbar.Add(result.Message, Severity.Success);
+            _newUsername = "";
+            _currentPassword = "";
+            _newPassword = "";
+            _confirmPassword = "";
+        }
+        else
+        {
+            Snackbar.Add(result.Message, Severity.Error);
+        }
+    }
+
+    private void ResetCredentials()
+    {
+        Auth.ResetToDefault();
+        _authOk = true;
+        _authMessage = "Login has been reset to Admin/Admin.";
+        Snackbar.Add(_authMessage, Severity.Warning);
+        _newUsername = "";
+        _currentPassword = "";
+        _newPassword = "";
+        _confirmPassword = "";
+    }
+
+    public void Dispose()
+    {
+        SettingsStore.Save();
+    }
+}

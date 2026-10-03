@@ -1,0 +1,71 @@
+﻿<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:netfx="http://wixtoolset.org/schemas/v4/wxs/netfx"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+  <!--
+    MCServer production installer (per-machine x64 MSI).
+    Payload is the framework-dependent win-x64 publish of the Blazor SSR
+    app MCServer (see MCServer.Installer.wixproj PublishMCServer target and
+    !(bindpath.PublishDir) harvesting in MCServerComponents.wxs).
+  -->
+  <Package Id="MCServer"
+           Name="MCServer"
+           Manufacturer="LNI Tek"
+           Version="0.3.0"
+           UpgradeCode="2EB95C55-0AE5-439E-8D05-0AE1D7D8A3AB"
+           Scope="perMachine">
+    <MajorUpgrade DowngradeErrorMessage="!(loc.DowngradeError)" />
+    <MediaTemplate EmbedCab="yes" />
+
+    <!-- ASP.NET Core 10 (x64) runtime must be present: framework-dependent publish. -->
+    <netfx:DotNetCompatibilityCheck Property="ASPNETCORERUNTIMECHECK"
+                                    RuntimeType="aspnet"
+                                    Version="10.0.0"
+                                    Platform="x64"
+                                    RollForward="latestMajor" />
+    <Launch Condition="Installed OR ASPNETCORERUNTIMECHECK = 0"
+            Message="!(loc.AspNetRuntimeMissing)" />
+
+    <!--
+      Data-folder cleanup path for MCServerDataCleanup/RemoveFolderEx.
+      Opt-in only: resolved during uninstall when REMOVEDATA=1, otherwise
+      the property stays empty and the data folder is left alone.
+      Usage (elevated prompt):  msiexec /x {ProductCode} REMOVEDATA=1
+    -->
+    <Property Id="REMOVEDATA" Secure="yes" />
+    <SetProperty Id="MCServerAppData"
+                 Value="[%APPDATA]\MCServer"
+                 Sequence="both"
+                 After="CostFinalize"
+                 Condition="REMOVE=&quot;ALL&quot; AND REMOVEDATA=&quot;1&quot;" />
+
+    <!--
+      Confirmation for the opt-in data wipe. Shown modally during uninstall
+      (UI sequence only, so silent uninstalls with REMOVEDATA=1 proceed
+      without prompting). "Keep data" clears the flag, cancelling the wipe.
+    -->
+    <UI>
+      <Dialog Id="ConfirmDataWipeDlg" Width="370" Height="180" Title="!(loc.ConfirmWipeTitle)" NoMinimize="yes">
+        <Control Id="Description" Type="Text" X="20" Y="20" Width="330" Height="80" Text="!(loc.ConfirmWipeText)" />
+        <Control Id="DeleteBtn" Type="PushButton" X="100" Y="140" Width="80" Height="17" Text="!(loc.ConfirmWipeDelete)">
+          <Publish Event="EndDialog" Value="Return" Condition="1" />
+        </Control>
+        <Control Id="KeepBtn" Type="PushButton" X="190" Y="140" Width="80" Height="17" Text="!(loc.ConfirmWipeKeep)" Default="yes">
+          <Publish Property="REMOVEDATA" Value="0" Condition="1" />
+          <Publish Event="EndDialog" Value="Return" Condition="1" />
+        </Control>
+      </Dialog>
+    </UI>
+    <InstallUISequence>
+      <Show Dialog="ConfirmDataWipeDlg" Before="CostFinalize" Condition="REMOVE=&quot;ALL&quot; AND REMOVEDATA=&quot;1&quot;" />
+    </InstallUISequence>
+
+    <!-- Minimal UI: welcome / progress / exit, no license dialog. -->
+    <ui:WixUI Id="WixUI_Minimal" />
+
+    <Feature Id="Main" Title="!(loc.FeatureTitle)" Description="!(loc.FeatureDescription)" Level="1">
+      <ComponentGroupRef Id="MCServerFiles" />
+      <ComponentGroupRef Id="MCServerShortcuts" />
+      <ComponentGroupRef Id="MCServerDataCleanup" />
+    </Feature>
+  </Package>
+</Wix>

@@ -1,0 +1,83 @@
+@using MCServer.Plugins
+
+@* Console-style rendering of the command hierarchy: labeled button groups.
+   Rebuilds the tree every render so group/command states stay live.
+   Recurses into itself for sub-groups. *@
+
+@{
+    var node = Node ?? BuildRoot();
+}
+
+@if (node is not null)
+{
+    @if (ShowLabel)
+    {
+        @* <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center" Class="mt-2"> *@
+        @*     @if (!string.IsNullOrEmpty(node.Icon)) *@
+        @*     { *@
+        @*         <MudIcon Icon="@node.Icon" Size="Size.Small" /> *@
+        @*     } *@
+        @*     <MudText Typo="Typo.subtitle2">@node.Label</MudText> *@
+        @* </MudStack> *@
+        @if (node.Commands.Count > 0)
+        {
+            <MudButtonGroup Color="@Color" Variant="@Variant">
+                @foreach (var cmd in node.Commands)
+                {
+                    <MudButton StartIcon="@cmd.Display?.Icon"
+                               Disabled="@(node.Disabled || cmd.Display?.IsDisabled?.Invoke() == true)"
+                               OnClick="@(() => Execute(cmd))">
+                        @cmd.DisplayLabel
+                    </MudButton>
+                }
+            </MudButtonGroup>
+        }
+        @foreach (var sub in node.Groups)
+        {
+            <MudMenu Label="@sub.Label" StartIcon="@sub.Icon" EndIcon="@Icons.Filled.ArrowDropDown" Style="align-self: auto;">
+                <CommandMenu Node="@sub" Color="@Color"></CommandMenu>
+            </MudMenu>
+        }
+    }
+    else
+    {
+        @foreach (var sub in node.Groups)
+        {
+            <CommandButtons Node="@sub" OnExecute="@OnExecute" Color="@Color" Variant="@Variant" ShowLabel="true" />
+        }
+        @if (node.Commands.Count > 0)
+        {
+            <MudButtonGroup Color="@Color" Variant="@Variant">
+                @foreach (var cmd in node.Commands)
+                {
+                    <MudButton StartIcon="@cmd.Display?.Icon"
+                               Disabled="@(node.Disabled || cmd.Display?.IsDisabled?.Invoke() == true)"
+                               OnClick="@(() => Execute(cmd))">
+                        @cmd.DisplayLabel
+                    </MudButton>
+                }
+            </MudButtonGroup>
+        }
+    }
+}
+
+@code {
+    /// <summary>Full command list. Used at the root; the tree is rebuilt every render.</summary>
+    [Parameter] public ServerCommandList? Commands { get; set; }
+
+    /// <summary>Sub-tree to render. Used for recursion; takes precedence over <see cref="Commands"/>.</summary>
+    [Parameter] public CommandGroupNode? Node { get; set; }
+
+    [Parameter] public EventCallback<ServerCommand> OnExecute { get; set; }
+
+    [Parameter] public Color Color { get; set; } = Color.Primary;
+    [Parameter] public Variant Variant { get; set; } = Variant.Outlined;
+
+    /// <summary>Render this node's own header. False at the root.</summary>
+    [Parameter] public bool ShowLabel { get; set; }
+
+    private CommandGroupNode? BuildRoot() =>
+        Commands is null ? null : CommandHierarchy.Build(Commands.Displayable, Commands.GroupDeclarations);
+
+    private Task Execute(ServerCommand command) => OnExecute.InvokeAsync(command);
+}

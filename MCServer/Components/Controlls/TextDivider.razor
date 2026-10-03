@@ -1,0 +1,31 @@
+<style>
+    .text-divider {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        gap: 12px;
+    }
+
+    .divider-line {
+        flex: 1;
+    }
+
+    .divider-text {
+        white-space: nowrap;
+    }
+</style>
+
+<div class="text-divider">
+    <MudDivider Class="divider-line" />
+
+    <MudText Typo="Typo.body2" Class="divider-text">
+        @Text
+    </MudText>
+
+    <MudDivider Class="divider-line" />
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Text { get; set; } = string.Empty;
+}

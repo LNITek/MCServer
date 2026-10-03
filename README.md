@@ -1,71 +1,80 @@
 ﻿# MCServer
+[![Release](https://img.shields.io/badge/PreRelease-0.3.0-blue.svg)](https://github.com/LNITek/MCServer/releases/latest)
+![.NET](https://img.shields.io/badge/.NET-10-512BD4.svg)
+![Platform](https://img.shields.io/badge/platform-Windows%20x64-blue.svg)
 
-[![Release](https://img.shields.io/badge/Release-0.2.1-blue.svg)](https://github.com/LNITek/MCServer/releases/latest)
+`MCServer` is a self-hosted web UI for managing Minecraft servers. The host itself is server-type agnostic — game support comes from plugins.
 
-`MCServer` Is Server Software For Minecraft Bedrock Using Mojang's Bedrock Dedicated Server Software (BDS) As A Base.
+> ***Note!*** This software is optimised for private home servers. For public servers, use it at your own risk.
 
-> ***Note!*** This Software Is Optomised For Private Home Servers. Use It For A Public Server At Your Own Risk.
-
-> ***Note!*** This Software Is ***Not*** Mojang Oficial Software. It Is Created Independently By **LNI.Tek**.
-`The Base Software (Bedrock Dedicated Server)` Is Oficial Mojang Software And Is Download From [Mojang's Website](https://www.minecraft.net/en-us/download/server/bedrock).
-
-> ***Note!*** By Downloading And Using This Software You Do Agree To The Minecrafts [End User License Agreement](https://minecraft.net/eula) and [Privacy Policy](https://go.microsoft.com/fwlink/?LinkId=521839).
-
+> ***Warning!*** This project is in development. Code is messy featurs my or my not work as expected, or at all.
 ---
 
-Check The `Content Tables` Down Below Or Look At The [Documentasion](https://github.com/LNITek/MCServer/wiki) To See More Info.
+Check the feature tables down below or find the [Documentation](https://github.com/LNITek/MCServer/wiki) for more info.
 <br/>
-The [Change Log](https://github.com/LNITek/MCServer/blob/main/MCServer/ChangeLog.md) Contains Info Around Changes, Fixes And New Features.
+The [ChangeLog](ChangeLog.md) contains info around changes, fixes and new features.
 <br/>
-Have An Issue Or Feature In Mind Visit: [Issues And Features](https://github.com/LNITek/MCServer/issues).
-<br/>
-Any Issue Or New Feature For The `Base Software (Bedrock Dedicated Server)`: [Issues](https://bugs.mojang.com/projects/BDS/issues/BDS) And [Features](https://feedback.minecraft.net/).
+Have an issue or feature in mind don't hesitate to post them [here](https://github.com/LNITek/MCServer/issues).
 
-## Installation
-You Can Download `MCServer` [Here](https://github.com/LNITek/MCServer/releases) Or On My [Website](https://lnitek.com/Projects/zkEunhiFIqy4h1FVttEm).
 
-## Suported Platforms
+## Supported Platforms
 
-| OS		| GUI	| Console	|
-| -----		| -----	| -----		|
-| Windows (7+) | :heavy_check_mark: (V0.2.1) | :wavy_dash:* (V0.0.0) |
-| Linux () | :x: | :x: |
+| OS | Support | Installer |
+|---|---|---|
+| Windows | :heavy_check_mark: | :heavy_check_mark: |
+| Linux | :heavy_check_mark: | :x: |
+| Docker | :wavy_dash: | :x: |
 
-> *Console Version For The Windows Platform Is Not Up To Date! Commands and or other functions may or may not work as descibed.
+## Windows
 
-## Features
-| Feature								| Windows UI |
-| -----									| -----		 |
-| Auto Minecraft Updater				| :heavy_check_mark: |
-| Console Display						| :heavy_check_mark: |
-| Fast Controles						| :heavy_check_mark: |
-| Easy To Use Commands					| :heavy_check_mark: |
-| Auto Updater							| :x: |
-| server.properties File Editor			| :heavy_check_mark: |
-| Alowlist File Editor					| :heavy_check_mark: |
-| Permissions File Editor				| :heavy_check_mark: |
-| Dynamic DNS Manager					| :wavy_dash: Feature is there, but there are no services included. |
-| Resource / Behavior Packs Manager		| :x: |
-| World Trim							| :x: |
-| World Export							| :x: |
-| World Backup System					| :heavy_check_mark: |
-| Schedule System						| :heavy_check_mark: |
-| Power Management						| :heavy_check_mark: |
-| Player Tracker						| :x: |
+> Windows and its installer is curently under production testing.
 
-## Command -Help
-| Command	| Parameters				| Description																	| Exampel	|
-| -----		| -----						| -----																			| -----		|
-| !			| [None]					| Stops the server, Exits the app and Power off (Shutdown) in 10 Seconds		| !		    |
-| Backup	| [None]					| Backups The Active World While The Server Is Running.							| backup	|	
-| Start		| [None]					| Starts The Server If It's Not Running Yet.									| start		|
-| Restart	| [None]					| Restarts The Server.															| restart	|
-| Stop		| `Delay`: ***number*** = The Delay Before Stoping In Seconds. | Stops The Server.							| stop 10	|						
-| Exit		| `Delay`: ***number*** = The Delay Before Stoping In Seconds. | Stops The Server And Exits The App.		| exit 10	|					
-| Power		| `Delay`: ***number*** = The Delay Before Stoping In Seconds. | Stops The Server And Power On/Off OS.		| power 10 1|
-| [Default] | [Unkown]					| Anything Else Will Pass Thru To `The Base Software (Bedrock Dedicated Server)`|			|
-| ***Command Interface Only*** ||||
-| [None] ||||
-| **To Be Added** ||||
-| Help | `Command`: text = The command to help with | Gives a helping hand and describes the whats and hows.			| help power |
-| version | [none] | Will display the minecraft and this software versions | version |
+> Version 0.3.* is incompatible with previus versions (> 0.2.*). To upgrade first uninstall the old version manually, then install the fresh new version. Settings do not migrate.
+
+
+### Requirements:
+*  **Runtime**  — [ASP.NET Core 10 (x64)](https://dotnet.microsoft.com/download/dotnet/10.0)
+
+### Installation
+
+1. Install the ASP.NET Core 10 x64 runtime (link above).
+2. Run `MCServer.msi` from the [latest release](https://github.com/LNITek/MCServer/releases/latest) (installs to `C:\Program Files\MCServer\` with Start Menu shortcuts).
+3. Start **MCServer** and open `http://localhost:5000`.
+
+## Security
+
+Log in with `Admin` / `Admin`. Change the credentials immediately under Settings after installation.
+> Forgot your login? Type: `reset-auth` in the terminal (resets to `Admin` / `Admin`).
+
+The auth system is not tested agains any bad actors. I would keep the web UI LAN only.
+
+The project is AI assisted. Not all code writen by AI has been audited.
+
+## Platform Features
+
+| Feature | Status |
+|---|---|
+| App updater / Version checking | :x: |
+| Login & user auth | :heavy_check_mark: |
+| Multi user support | :x: |
+| Plugin system | :heavy_check_mark: |
+| Plugin version control | :x: |
+| Plugin Store | :x: |
+| Multi server support | :heavy_check_mark: |
+| Console display & commands | :heavy_check_mark: |
+| Schedule system | :heavy_check_mark: |
+| Power management | :heavy_check_mark: |
+| Documentation viewer | :heavy_check_mark: |
+| Server folder viewer | :heavy_check_mark: |
+| Server hardware resource viewer | :heavy_check_mark: |
+| Host system hardware resource viewer | :heavy_check_mark: |
+| External hosting | :x: |
+| Dynamic DNS manager | :x: |
+| Port management | :x: |
+| Port fowarding checker | :x: |
+
+## Bundled Plugins
+
+| Plugin | Description |
+|---|---|
+| [Bedrock Dedicated Server](MCServer.BDS/README.md) | Manage Mojang Bedrock servers |

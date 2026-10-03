@@ -1,0 +1,117 @@
+@using MCServer.BDS.Services
+@implements IDisposable
+
+<MudGrid Spacing="4">
+    @if (Limit is null)
+    {
+        <MudItem xs="12">
+            <MudAlert Variant="Variant.Text" Severity="Severity.Info">Select a rate limit or create a new one.</MudAlert>
+        </MudItem>
+        return;
+    }
+
+    <MudItem xs="12">
+        <MudStack Spacing="1" Row>
+            @if (ShowBack)
+            {
+                <MudIconButton Variant="Variant.Text" Color="Color.Inherit" Icon="@Icons.Filled.ArrowBack"
+                               OnClick="ShowList" />
+            }
+
+            <MudSpacer />
+
+            <MudIconButton Variant="Variant.Text" Color="Color.Info" Icon="@Icons.Rounded.Save" OnClick="Save" />
+            @if (Limit.minecraftPacketIds != null)
+            {
+                <MudIconButton Variant="Variant.Text" Color="Color.Error" Icon="@Icons.Rounded.Delete"
+                               OnClick="DeleteLimit_Click" />
+            }
+        </MudStack>
+    </MudItem>
+
+    <MudItem xs="12">
+    </MudItem>
+
+    <MudItem xs="12">
+        <MudStack Spacing="4">
+            @if (Limit.minecraftPacketIds is not null)
+            {
+                <MudTextField Variant="Variant.Outlined" T="string" Label="Packet IDs" @bind-Value="Limit.PacketIds"
+                              HelperText="List of packet to limit by there IDs. Ex: 193;4" />
+            }
+
+            <MudText Typo="Typo.h6">Algorithm</MudText>
+
+            <MudSelect Variant="Variant.Outlined" T="PacketConfig.AlgorithmType" Label="Name"
+                       @bind-Value="Limit.algorithm.Type" FullWidth>
+                @foreach (var type in Enum.GetValues<PacketConfig.AlgorithmType>())
+                {
+                    <MudSelectItem Value="type">@type.ToString()</MudSelectItem>
+                }
+            </MudSelect>
+            <MudNumericField Variant="Variant.Outlined" T="float" Label="Drain Rate/s"
+                             @bind-Value="Limit.algorithm.Parameters.drainRatePerSec" Min="0f" Max="10000f" />
+            <MudNumericField Variant="Variant.Outlined" T="uint" Label="Max Bucket Size"
+                             @bind-Value="Limit.algorithm.Parameters.maxBucketSize" Min="1" Max="10000" />
+        
+        </MudStack>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter]
+    public PacketConfig.Limit? Limit
+    {
+        get => _limit;
+        set
+        {
+            if (_limit == value) return;
+            _limit = value;
+            LimitChanged.InvokeAsync(value);
+        }
+    }
+    private PacketConfig.Limit? _limit { get; set; } = default;
+    [Parameter]
+    public EventCallback<PacketConfig.Limit?> LimitChanged { get; set; }
+
+    [Parameter, EditorRequired]
+    public BedrockServer Server { get; set; } = null!;
+    [Parameter]
+    public bool ShowBack { get; set; } = false;
+    [Parameter, EditorRequired]
+    public PacketConfig Config { get; set; } = new();
+
+    [Parameter]
+    public EventCallback OnStateHasChanged { get; set; }
+
+    private void UpdateState()
+    {
+        StateHasChanged();
+        OnStateHasChanged.InvokeAsync();
+    }
+
+    public void ShowList()
+    {
+        Limit = null;
+    }
+
+    public void Dispose()
+    {
+        Save();
+    }
+
+    private void Save()
+    {
+        if (Server == null) return;
+        Server.SetPacketConfig(Config);
+    }
+
+    private void DeleteLimit_Click()
+    {
+        if (Limit?.minecraftPacketIds == null) return;
+        Config.limitGroups.Remove(Limit);
+        Limit = Config.DefaultLimit;
+        Save();
+        UpdateState();
+    }
+}

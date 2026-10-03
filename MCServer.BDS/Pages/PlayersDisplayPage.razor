@@ -1,0 +1,136 @@
+@using MCServer.BDS.Services
+@implements IDisposable
+
+<MudGrid Spacing="4">
+    @if (Player is null)
+    {
+        <MudItem xs="12">
+            <MudAlert Variant="Variant.Text" Severity="Severity.Info">Select a player or create a new one.</MudAlert>
+        </MudItem>
+        return;
+    }
+
+    <MudItem xs="12">
+        <MudStack Spacing="1" Row>
+            @if (ShowBack)
+            {
+                <MudIconButton Variant="Variant.Text" Color="Color.Inherit" Icon="@Icons.Filled.ArrowBack"
+                               OnClick="ShowList" />
+            }
+
+            <MudSpacer />
+
+            <MudIconButton Variant="Variant.Text" Color="Color.Info" Icon="@Icons.Rounded.Save" OnClick="Save" />
+            <MudIconButton Variant="Variant.Text" Color="Color.Error" Icon="@Icons.Rounded.Delete"
+                           OnClick="DeletePlayer_Click" />
+        </MudStack>
+    </MudItem>
+
+    <MudItem xs="12">
+        <MudStack Spacing="4">
+            <MudTextField Variant="Variant.Outlined" T="string" Label="Name" @bind-Value="Player.Name"></MudTextField>
+            <MudTextField Variant="Variant.Outlined" T="string" Label="XUID" @bind-Value="Player.Xuid"></MudTextField>
+            <MudText>
+                <MudText><b>Last time connected:</b> @Player.LastLogin</MudText>
+                <MudText><b>Total time played:</b> @Player.TotalPlayTime</MudText>
+            </MudText>
+
+            <MudDivider />
+
+            <MudText Typo="Typo.h6">Properties</MudText>
+            <MudSelect Variant="Variant.Outlined" T="PlayerPermission" Label="Permission"
+                       @bind-Value="Player.Permissions" FullWidth>
+                @foreach (var permission in Enum.GetValues<PlayerPermission>())
+                {
+                    <MudSelectItem Value="permission">@permission.ToString()</MudSelectItem>
+                }
+            </MudSelect>
+        </MudStack>
+    </MudItem>
+
+    <MudItem xs="12">
+        <MudStack Spacing="1" Row AlignItems="AlignItems.Start" Breakpoint="Breakpoint.SmAndDown">
+            <MudCheckBox T="bool" @bind-Value="Player.WhiteList" Label="Add to allow list" />
+            <MudSwitch T="bool" @bind-Value="Player.IgnoresPlayerLimit" Label="Ignores Player Limit"
+                       Disabled="@(!Player.WhiteList)" />
+
+        </MudStack>
+    </MudItem>
+
+    <MudItem xs="12">
+        <MudStack Spacing="1" Row AlignItems="AlignItems.Start" Breakpoint="Breakpoint.SmAndDown">
+            <MudCheckBox T="bool" @bind-Value="Player.Ban" Label="Is Player Banned" />
+            <MudSwitch T="bool" ValueChanged="(v) => { Player.BanTime = v ? null : DateTime.Today.AddDays(1); }"
+                       Value="@(Player.BanTime == null)" Label="Permanently" Disabled="@(!Player.Ban)" />
+        </MudStack>
+    </MudItem>
+
+    @if (Player.Ban)
+    {
+        <MudItem xs="12" md="4">
+            <MudDatePicker Date="@Player.BanTime" Disabled="@(Player.BanTime == null)" Label="Banned until"
+                           MinDate="@(DateTime.Now)" Variant="Variant.Outlined"/>
+        </MudItem>
+        <MudItem xs="12" md="8">
+            <MudTextField Variant="Variant.Outlined" T="string" Label="Ban reason" @bind-Value="Player.BanResin"
+                          FullWidth />
+        </MudItem>
+    }
+</MudGrid>
+
+@code {
+    [Parameter]
+    public Player? Player
+    {
+        get => _player;
+        set
+        {
+            if (_player == value) return;
+            _player = value;
+            PlayerChanged.InvokeAsync(value);
+        }
+    }
+    private Player? _player { get; set; } = default;
+    [Parameter]
+    public EventCallback<Player?> PlayerChanged { get; set; }
+
+    [Parameter, EditorRequired]
+    public BedrockServer Server { get; set; } = null!;
+    [Parameter]
+    public bool ShowBack { get; set; } = false;
+
+    [Parameter]
+    public EventCallback OnStateHasChanged { get; set; }
+
+    private void UpdateState()
+    {
+        StateHasChanged();
+        OnStateHasChanged.InvokeAsync();
+    }
+
+    public void ShowList()
+    {
+        Player = null;
+    }
+
+    public void Dispose()
+    {
+        Save();
+    }
+
+    private void Save()
+    {
+        if (Server == null) return;
+        Server.SetPlayers(Server.PlayerList);
+        Server.RefreshPlayerProperties();
+    }
+
+    private void DeletePlayer_Click()
+    {
+        if (Server == null || Player == null) return;
+        Server.PlayerList.Remove(Player);
+        Player = null;
+        Save();
+        UpdateState();
+    }
+}

@@ -1,0 +1,45 @@
+﻿<Project Sdk="WixToolset.Sdk/7.0.0">
+
+  <PropertyGroup>
+    <!-- MSI file name: bin\<Config>\net10.0\MCServer.msi -->
+    <OutputName>MCServer</OutputName>
+    <Version>0.3.0</Version>
+    <!-- WiX v7 EULA acceptance (see https://wixtoolset.org/osmf/). -->
+    <AcceptEula>wix7</AcceptEula>
+    <!-- MCServer + BDS are 64-bit only -->
+    <InstallerPlatform>x64</InstallerPlatform>
+    <!-- Framework-dependent publish staging folder (harvested via Files element). -->
+    <PublishDir>$(MSBuildProjectDirectory)\publish\</PublishDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Ensures the web app builds before the installer in solution builds. -->
+    <ProjectReference Include="..\MCServer\MCServer.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="WixToolset.Netfx.wixext" Version="7.0.0" />
+    <PackageReference Include="WixToolset.UI.wixext" Version="7.0.0" />
+    <PackageReference Include="WixToolset.Util.wixext" Version="7.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Named bind path used as !(bindpath.PublishDir) in .wxs Files harvesting. -->
+    <BindPath Include="$(PublishDir)" BindName="PublishDir" />
+  </ItemGroup>
+
+  <!--
+    Publish the Blazor SSR app before WiX compiles so Files harvesting always
+    sees a fresh framework-dependent publish output.
+    SelfContained=false keeps the MSI small (~40 MB); the installer blocks
+    when the ASP.NET Core 10 x64 runtime is missing (see Package.wxs).
+    Portable (RID-less) publish: managed output + Windows apphost MCServer.exe.
+  -->
+  <Target Name="PublishMCServer" BeforeTargets="BeforeBuild">
+    <RemoveDir Directories="$(PublishDir)" Condition="Exists('$(PublishDir)')" />
+    <MSBuild Projects="..\MCServer\MCServer.csproj"
+             Targets="Publish"
+             Properties="Configuration=Release;SelfContained=false;PublishSingleFile=false;PublishDir=$(PublishDir)" />
+  </Target>
+
+</Project>

@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".gitattributes" />
+    <File Path=".gitignore" />
+    <File Path="ChangeLog.md" />
+    <File Path="README.md" />
+  </Folder>
+  <Project Path="MCServer/MCServer.csproj" />
+  <Project Path="MCServer.Plugin/MCServer.Plugin.csproj" />
+  <Project Path="MCServer.BDS/MCServer.BDS.csproj" />
+  <Project Path="MCServer.Installer/MCServer.Installer.wixproj">
+    <Build />
+  </Project>
+</Solution>

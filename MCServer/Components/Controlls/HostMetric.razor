@@ -1,0 +1,90 @@
+@using MCServer.Services
+@implements IDisposable
+@inject HostMetricsService HostMetrics
+
+@* Host counterpart to ProcessMetric: renders one host-wide metric
+   (CPU / memory / disk / network) through the shared MetricCard. *@
+
+<MetricCard Title="@Title"
+            DisplayValue="@DisplayValue"
+            Icon="@ResolveIcon()"
+            AvatarColor="@ResolveColor()"
+            Progress="@Progress"
+            ShowProgress="@(ShowProgress && Metric != HostMetricType.Network)"
+            ShowCircular="@ShowCircular" />
+
+@code {
+    [Parameter]
+    public HostMetricType Metric { get; set; }
+
+    [Parameter]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter]
+    public bool ShowProgress { get; set; } = true;
+
+    [Parameter]
+    public bool ShowCircular { get; set; }
+
+    /// <summary>Overrides the per-metric default icon when set.</summary>
+    [Parameter]
+    public string? Icon { get; set; }
+
+    /// <summary>Overrides the per-metric default color when set.</summary>
+    [Parameter]
+    public Color? AccentColor { get; set; }
+
+    protected override void OnInitialized() =>
+        HostMetrics.MetricsUpdated += OnMetricsUpdated;
+
+    public void Dispose() =>
+        HostMetrics.MetricsUpdated -= OnMetricsUpdated;
+
+    private void OnMetricsUpdated(object? sender, HostMetricsSnapshot snapshot) =>
+        _ = InvokeAsync(StateHasChanged);
+
+    private HostMetricsSnapshot Snapshot => HostMetrics.Latest;
+
+    private string DisplayValue => Metric switch
+    {
+        HostMetricType.Cpu =>
+            $"{Snapshot.CpuPercent:0}%",
+
+        HostMetricType.Memory =>
+            $"{Snapshot.MemoryPercent:0}%",
+
+        HostMetricType.Disk =>
+            $"{Snapshot.DiskPercent:0}%",
+
+        HostMetricType.Network =>
+            $"↓ {Snapshot.NetworkReceiveMBps:0.0} MB/s ↑ {Snapshot.NetworkSendMBps:0.0} MB/s",
+
+        _ => string.Empty,
+    };
+
+    private double Progress => Metric switch
+    {
+        HostMetricType.Cpu => Snapshot.CpuPercent,
+        HostMetricType.Memory => Snapshot.MemoryPercent,
+        HostMetricType.Disk => Snapshot.DiskPercent,
+        _ => 0,
+    };
+
+    private string ResolveIcon() => Icon ?? Metric switch
+    {
+        HostMetricType.Cpu => Icons.Filled.Speed,
+        HostMetricType.Memory => Icons.Filled.Memory,
+        HostMetricType.Disk => Icons.Filled.Storage,
+        HostMetricType.Network => Icons.Filled.SwapVert,
+        _ => Icons.Filled.Computer,
+    };
+
+    private Color ResolveColor() => AccentColor ?? Metric switch
+    {
+        HostMetricType.Cpu => Color.Primary,
+        HostMetricType.Memory => Color.Secondary,
+        HostMetricType.Disk => Color.Info,
+        HostMetricType.Network => Color.Success,
+        _ => Color.Primary,
+    };
+}

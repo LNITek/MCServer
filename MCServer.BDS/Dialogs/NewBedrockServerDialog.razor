@@ -1,0 +1,147 @@
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3" Style="min-width: min(420px, 80vw);">
+            @if (!string.IsNullOrWhiteSpace(_error))
+            {
+                <MudAlert Severity="Severity.Error">@_error</MudAlert>
+            }
+
+            <MudTextField @bind-Value="_name"
+                         Label="Server name"
+                         Variant="Variant.Outlined"
+                         AutoFocus="true"
+                         Immediate="true"
+                         Disabled="@_busy"
+                         HelperText="Also used as the server files folder name." />
+
+            <MudCheckBox T="bool" @bind-Value="_preview" Label="Use Preview version" Disabled="@_busy" />
+            <MudCheckBox T="bool" @bind-Value="_autoStart" Label="Auto Start server" Disabled="@_busy" />
+
+            @if (_busy)
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary">@_status</MudText>
+                <MudProgressLinear Value="@(_progress * 100)" Size="Size.Medium" Color="Color.Primary" />
+            }
+            else
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    The newest Bedrock server files are downloaded automatically on create.
+                </MudText>
+            }
+        </MudStack>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="Cancel" Disabled="@_busy">Cancel</MudButton>
+        @if (_busy)
+        {
+            <MudButton Color="Color.Error" Variant="Variant.Filled" OnClick="CancelDownload">Cancel Download</MudButton>
+        }
+        else
+        {
+            <MudButton Color="Color.Primary"
+                       Variant="Variant.Filled"
+                       OnClick="CreateAsync"
+                       Disabled="@string.IsNullOrWhiteSpace(_name)">
+                Create &amp; Download
+            </MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Inject]
+    private IServerHost Host { get; set; } = default!;
+
+    private string _name = "";
+    private bool _preview;
+    private bool _autoStart;
+    private bool _busy;
+    private double _progress;
+    private string _status = "";
+    private string? _error;
+    private CancellationTokenSource? _cts;
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private void CancelDownload()
+    {
+        _cts?.Cancel();
+    }
+
+    private async Task CreateAsync()
+    {
+        _error = null;
+        var name = _name.Trim();
+
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            _error = "Enter a server name.";
+            return;
+        }
+
+        if (name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+        {
+            _error = $"Server name contains invalid characters: {name}";
+            return;
+        }
+
+        var settings = new ServerSettings
+        {
+            ID = name.ToLower(),
+            Name = name,
+            Type = "BDS",
+            Preview = _preview,
+            AutoStart = _autoStart,
+        };
+        var targetPath = settings.GetFullPath(Host.ServerFiles);
+        if (Directory.Exists(targetPath))
+        {
+            _error = $"A server folder '{name}' already exists.";
+            return;
+        }
+
+        _busy = true;
+        _progress = 0;
+        _status = "Resolving newest version...";
+        _cts = new CancellationTokenSource();
+        StateHasChanged();
+
+        try
+        {
+            var progress = new Progress<double>(p =>
+            {
+                _progress = p;
+                _status = p < 0.8 ? $"Downloading... {p * 100:F0}%" : $"Extracting... {p * 100:F0}%";
+                _ = InvokeAsync(StateHasChanged);
+            });
+
+            var result = await Services.MaintenanceService.InstallNewestAsync(
+                targetPath, _preview, Host.IsWindows, progress, _cts.Token);
+
+            settings.Version = result.Version;
+            MudDialog.Close(DialogResult.Ok(settings));
+        }
+        catch (OperationCanceledException)
+        {
+            MudDialog.Cancel();
+        }
+        catch (Exception ex)
+        {
+            _busy = false;
+            _error = $"Download failed: {ex.Message}";
+            StateHasChanged();
+        }
+        finally
+        {
+            _cts?.Dispose();
+            _cts = null;
+        }
+    }
+}

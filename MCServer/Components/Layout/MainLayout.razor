@@ -1,0 +1,206 @@
+﻿@using System.ComponentModel
+@using System.Reflection.Metadata.Ecma335
+@inherits LayoutComponentBase
+@implements IDisposable
+@inject ILocalStorageService Storage;
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+@inject GameServers Servers
+@inject PageHeaderService HeaderService
+
+<MudThemeProvider @ref="_mudThemeProvider" Theme="Theme.MasterTheme" @bind-IsDarkMode="IsDarkMode" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<style>
+    .mud-badge.mud-badge-bottom.right {
+        inset: auto;
+    }
+    .mud-navmenu {
+        height: 100%;
+        margin: 0;
+        position: relative;
+        list-style: none;
+        overscroll-behavior-y: contain;
+    }
+</style>
+
+<MudLayout>
+    <MudAppBar Elevation="1">
+        <MudIconButton Icon="@Icons.Rounded.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer"/>
+        @if (HeaderService.Content is not null)
+        {
+            @HeaderService.Content
+        }
+        else
+        {
+            <MudText Color="Color.Primary" Typo="Typo.h6" Style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">@(HeaderService.Title ?? DefaultPageHeader)</MudText>
+        }
+        <MudSpacer />
+        <AuthorizeView>
+            <Authorized>
+                <MudTooltip Text="@context.User.Identity?.Name">
+                    <form method="post" action="/auth/logout" style="display:inline-flex">
+                        <MudIconButton ButtonType="ButtonType.Submit" Icon="@Icons.Rounded.Logout" Color="Color.Inherit" Title="Logout"/>
+                    </form>
+                </MudTooltip>
+            </Authorized>
+        </AuthorizeView>
+        <MudIconButton Icon="@GetToggleTheme()" Color="Color.Inherit" OnClick="ToggleDarkMode" />@* Style="position:fixed; top:12px; right:12px; z-index:9999;" *@
+    </MudAppBar>
+    <MudDrawer @bind-Open="@_open" Elevation="1">
+        <MudDrawerHeader>
+            <MudStack Row="true" Spacing="3" AlignItems="AlignItems.Center">
+                <MudImage Src="favicon.png" Alt="Icon" Width="32" Height="32" ObjectFit="ObjectFit.Contain" />
+                <MudText Typo="Typo.h6">MCServer</MudText>
+            </MudStack>
+        </MudDrawerHeader>
+        <MudNavMenu>
+            <MudNavLink Href="/dashboard" Icon="@Icons.Rounded.Dashboard">Dashboard</MudNavLink>
+
+            <TextDivider Text="Servers" />
+            
+            @* <MudNavGroup Icon="@Icons.Rounded.Dns" Title="Servers"> *@
+            @*     <ChildContent> *@
+            @foreach (var server in Servers)
+            {//Href="/servers"
+                // Icon="@Icons.Filled._1K" Title="Default"
+                @* <MudNavGroup> *@
+                @*     <TitleContent> *@
+                @*         <MudStack Row Spacing="0" Style="margin-left: -12px; height:24.5px"> *@
+                @*             <MudBadge Origin="Origin.BottomRight" Color="@server.RunningStatus" Dot> *@
+                @*                 <MudIcon Icon="@Icons.Rounded.Monitor" *@
+                @*                          Class="mud-icon-root mud-icon-default mud-icon-size-medium mud-nav-link-icon mud-nav-link-icon-default material-icons-round" /> *@
+                @*             </MudBadge> *@
+                @*             <div class="mud-nav-link-text"> *@
+                @*                 <a href="@($"/servers/{server.Settings.ID}")">@server.Settings.Name</a> *@
+                @*             </div> *@
+                @*         </MudStack> *@
+                @*     </TitleContent> *@
+                @*     <ChildContent> *@
+                @*         <MudNavLink Icon="@Icons.Rounded.Terminal" Href="@($"/servers/{server.Settings.ID}/console")">Console</MudNavLink> *@
+                @*         <MudNavLink Icon="@Icons.Rounded.HomeRepairService" Href="@($"/servers/{server.Settings.ID}/props")">Properties</MudNavLink> *@
+                @*         <MudNavLink Icon="@Icons.Rounded.AdminPanelSettings" Href="@($"/servers/{server.Settings.ID}/player-settings")">Player Settings</MudNavLink> *@
+                @*         <MudNavLink Icon="@Icons.Rounded.Backpack" Href="@($"/servers/{server.Settings.ID}/packets")">Packet Configs</MudNavLink> *@
+                @*         <MudNavLink Icon="@Icons.Rounded.Timer" Href="@($"/servers/{server.Settings.ID}/schedules")">Schedules</MudNavLink> *@
+                @*     </ChildContent> *@
+                @* </MudNavGroup> *@
+                        
+                <MudNavLink href="@($"/servers/{server.Settings.ID}")">
+                    <ChildContent>
+                        <MudStack Row Spacing="3" Style="margin-left: -12px; height:24.5px">
+                            <MudBadge Origin="Origin.BottomRight" Color="@server.RunningStatus" Dot>
+                                <MudIcon Icon="@Icons.Rounded.Dns"
+                                         Class="mud-icon-root mud-icon-default mud-icon-size-medium mud-nav-link-icon mud-nav-link-icon-default material-icons-round" />
+                            </MudBadge>
+                                    
+                            @server.Settings.Name
+                        </MudStack>
+                    </ChildContent>
+                </MudNavLink>
+            }
+            @*     </ChildContent> *@
+            @* </MudNavGroup> *@
+        </MudNavMenu>
+        
+        <MudDivider Class="my-2" />
+
+        <MudNavLink Icon="@Icons.Rounded.StickyNote2" Href="/docs/host/notes">How To</MudNavLink>
+        <MudNavLink Icon="@Icons.Rounded.EventNote" Href="/docs/host/releases">Release Notes</MudNavLink>
+        <MudNavLink Icon="@Icons.Rounded.Extension" Href="/plugins">Plugins</MudNavLink>
+        <MudNavLink Icon="@Icons.Rounded.Settings" Href="/settings">Settings</MudNavLink>
+    </MudDrawer>
+    <MudMainContent Style="height:100%; display:flex; flex-direction:column;">
+        <div style="height:100%; display:flex; flex-direction:column; padding:18px;">
+            @Body
+        </div>
+    </MudMainContent>
+</MudLayout>
+
+<div id="blazor-error-ui" data-nosnippet style="z-index: 10000; color: var(--mud-palette-error-text); background-color: var(--mud-palette-error);">
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>
+
+@code {
+    private bool _open = true;
+
+    protected override void OnInitialized()
+    {
+        foreach (var server in Servers)
+            server.Settings.PropertyChanged += OnServerSettingsChanged;
+        HeaderService.Changed += OnHeaderChanged;
+        Nav.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnServerSettingsChanged(object? sender, PropertyChangedEventArgs e) =>
+        InvokeAsync(StateHasChanged);
+
+    private void OnHeaderChanged() =>
+        InvokeAsync(StateHasChanged);
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e) =>
+        InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        foreach (var server in Servers)
+            server.Settings.PropertyChanged -= OnServerSettingsChanged;
+        HeaderService.Changed -= OnHeaderChanged;
+        Nav.LocationChanged -= OnLocationChanged;
+    }
+
+    private void ToggleDrawer()
+    {
+        _open = !_open;
+    }
+
+    private bool IsDarkMode { get; set; } = true;
+    private MudThemeProvider _mudThemeProvider = default!;
+
+    private void ToggleDarkMode()
+    {
+        IsDarkMode = !IsDarkMode;
+        Storage.SetItemAsync(nameof(IsDarkMode), IsDarkMode);
+    }
+
+    private string GetToggleTheme() => IsDarkMode ? Icons.Rounded.LightMode : Icons.Rounded.DarkMode;
+
+    private string DefaultPageHeader
+    {
+        get
+        {
+            var URL = Nav.Uri[(Nav.Uri.LastIndexOf('/') + 1)..];
+            return URL switch
+            {
+                "" => "Dashboard",
+                "overview" => "Overview",
+                "console" => "Console",
+                "files" => "Files",
+                "schedules" => "Schedule",
+                "props" => "Properties",
+                "player-settings" => "Player Settings",
+                //"packets" => "Packet Rate Limit Config",
+                "notes" => "How To",
+                "releases" => "Release Notes",
+                "plugins" => "Plugins",
+                "settings" => "Settings",
+                _ when Nav.Uri.Contains("servers") => Servers.FindByID(URL)?.Settings.Name ?? "MCServer",
+                _ => "MCServer"
+            };
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        Program.Snackbar = Snackbar;
+        
+        if (firstRender)
+        {
+            IsDarkMode = (await Storage.GetItemAsync<bool?>(nameof(IsDarkMode))) ?? await _mudThemeProvider.GetSystemDarkModeAsync();
+            StateHasChanged();
+        }
+    }
+}

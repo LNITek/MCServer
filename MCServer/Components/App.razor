@@ -1,0 +1,65 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <ResourcePreloader />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <link rel="stylesheet" href="@Assets["app.css"]" />
+    <link rel="stylesheet" href="@Assets["MCServer.styles.css"]" />
+
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet" />
+    <link href="@Assets["_content/MudBlazor/MudBlazor.min.css"]" rel="stylesheet" />
+    <link href="@Assets["_content/MudBlazor.FontIcons.MaterialIcons/css/font.min.css"]" rel="stylesheet" />
+    <link href="@Assets["_content/MudBlazor.FontIcons.MaterialSymbols/css/font.min.css"]" rel="stylesheet" />
+    <ImportMap />
+    <HeadOutlet @rendermode="InteractiveServer" />
+</head>
+
+<body style="height:100vh">
+    <Routes @rendermode="InteractiveServer" />
+    <ReconnectModal />
+    <script src="@Assets["_framework/blazor.web.js"]"></script>
+    <script src="@Assets["_content/MudBlazor/MudBlazor.min.js"]"></script>
+    <script>
+        window.mcserverPostLogin = (username, password, returnUrl) => {
+            const f = document.createElement('form');
+            f.method = 'post';
+            f.action = '/auth/login';
+            const add = (name, value) => {
+                const i = document.createElement('input');
+                i.type = 'hidden';
+                i.name = name;
+                i.value = value ?? '';
+                f.appendChild(i);
+            };
+            add('username', username);
+            add('password', password);
+            add('returnUrl', returnUrl);
+            document.body.appendChild(f);
+            f.submit();
+        };
+        window.downloadFileFromStream = async (fileName, contentStreamReference) => {
+            const arrayBuffer = await contentStreamReference.arrayBuffer();
+            const blob = new Blob([arrayBuffer]);
+            const url = URL.createObjectURL(blob);
+            const anchorElement = document.createElement('a');
+            anchorElement.href = url;
+            anchorElement.download = fileName ?? '';
+            anchorElement.click();
+            anchorElement.remove();
+            URL.revokeObjectURL(url);
+        };
+        window.scrollToBottom = (element,threshold) => {
+            if (!element) return;
+            if (!threshold) threshold = 0;
+            if (element.scrollHeight - element.scrollTop - element.clientHeight < threshold || threshold === 0) {
+                element.scrollTop = element.scrollHeight;
+            }
+        };
+    </script>
+</body>
+
+</html>

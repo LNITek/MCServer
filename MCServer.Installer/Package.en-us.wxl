@@ -1,0 +1,15 @@
+﻿<!--
+This file contains the declaration of all the localizable strings.
+-->
+<WixLocalization xmlns="http://wixtoolset.org/schemas/v4/wxl" Culture="en-US">
+
+  <String Id="DowngradeError" Value="A newer version of [ProductName] is already installed." />
+  <String Id="AspNetRuntimeMissing" Value="[ProductName] requires the ASP.NET Core 10 (x64) runtime. Please install it from https://dotnet.microsoft.com/download/dotnet/10.0 and run this installer again." />
+  <String Id="FeatureTitle" Value="MCServer application" />
+  <String Id="FeatureDescription" Value="Installs the MCServer Blazor management UI and its dependencies." />
+  <String Id="ConfirmWipeTitle" Value="Delete MCServer data?" />
+  <String Id="ConfirmWipeText" Value="You chose to remove the MCServer data folder (%AppData%\MCServer), which contains settings, servers, worlds, backups and plugins. This cannot be undone. Are you sure?" />
+  <String Id="ConfirmWipeDelete" Value="Delete data" />
+  <String Id="ConfirmWipeKeep" Value="Keep data" />
+
+</WixLocalization>

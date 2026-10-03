@@ -1,0 +1,55 @@
+@page "/servers/{serverId}/p/{slug}"
+@using MCServer.Plugins
+@inject NavigationManager Nav
+@inject GameServers GameServers
+@inject PluginService Plugins
+
+<PageTitle>@(_server?.Settings.Name ?? "MCServer") - @_page?.Title</PageTitle>
+
+<PageHeader Title="@_page?.Title" />
+
+@if (_server is not null && _page is not null)
+{
+    <DynamicComponent Type="@_page.ComponentType" Parameters="@_parameters" />
+}
+
+@code {
+    [Parameter] public string serverId { get; set; } = "";
+    [Parameter] public string slug { get; set; } = "";
+
+    private IGameServer? _server;
+    private ServerPageDefinition? _page;
+    private Dictionary<string, object> _parameters = new();
+    private string _loadedKey = "";
+
+    /// <summary>
+    /// Resolves server + page from the route. Runs on first render and every
+    /// time <c>serverId</c> or <c>slug</c> changes (Blazor reuses this
+    /// component instance when navigating between servers/pages).
+    /// </summary>
+    protected override void OnParametersSet()
+    {
+        var key = $"{serverId}/{slug}";
+        if (_server is not null && key == _loadedKey) return;
+
+        _server = GameServers.FindByID(serverId);
+        if (_server is null)
+        {
+            Nav.NavigateTo("/not-found");
+            return;
+        }
+
+        _page = Plugins.FindPage(_server, slug);
+        if (_page is null)
+        {
+            Nav.NavigateTo("/not-found");
+            return;
+        }
+
+        _parameters = new Dictionary<string, object>
+        {
+            ["Server"] = _server,
+        };
+        _loadedKey = key;
+    }
+}

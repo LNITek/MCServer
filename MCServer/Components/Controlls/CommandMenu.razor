@@ -1,0 +1,46 @@
+@using MCServer.Plugins
+
+@* Menu-style rendering of the command hierarchy. Place inside a MudMenu:
+   groups become nested sub-menus, commands become menu items.
+   Rebuilds the tree every render so group/command states stay live.
+   Recurses into itself for sub-groups. *@
+
+@{
+    var node = Node ?? BuildRoot();
+}
+
+@if (node is not null)
+{
+    @foreach (var sub in node.Groups)
+    {
+        <MudMenu Label="@sub.Label" StartIcon="@MenuIcon(sub)" Disabled="@sub.Disabled" ActivationEvent="@MouseEvent.MouseOver">
+            <CommandMenu Node="@sub" OnExecute="@OnExecute" />
+        </MudMenu>
+    }
+    @foreach (var cmd in node.Commands)
+    {
+        <MudMenuItem Icon="@cmd.Display?.Icon"
+                     Disabled="@(node.Disabled || cmd.Display?.IsDisabled?.Invoke() == true)"
+                     OnClick="@(() => Execute(cmd))">
+            @cmd.DisplayLabel
+        </MudMenuItem>
+    }
+}
+
+@code {
+    /// <summary>Full command list. Used at the root; the tree is rebuilt every render.</summary>
+    [Parameter] public ServerCommandList? Commands { get; set; }
+
+    /// <summary>Sub-tree to render. Used for recursion; takes precedence over <see cref="Commands"/>.</summary>
+    [Parameter] public CommandGroupNode? Node { get; set; }
+
+    [Parameter] public EventCallback<ServerCommand> OnExecute { get; set; }
+
+    private CommandGroupNode? BuildRoot() =>
+        Commands is null ? null : CommandHierarchy.Build(Commands.Displayable, Commands.GroupDeclarations);
+
+    private static string? MenuIcon(CommandGroupNode node) =>
+        string.IsNullOrEmpty(node.Icon) ? null : node.Icon;
+
+    private Task Execute(ServerCommand command) => OnExecute.InvokeAsync(command);
+}

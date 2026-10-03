@@ -1,0 +1,11 @@
+@page "/"
+@inject NavigationManager Nav
+
+<PageLoading/>
+
+@code {
+    protected override void OnAfterRender(bool firstRender)
+    {
+        Nav.NavigateTo("/dashboard");
+    }
+}

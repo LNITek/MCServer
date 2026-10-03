@@ -1,0 +1,230 @@
+@using System.Diagnostics
+@using MCServer.Services
+@implements IDisposable
+@inject ProcessMetricsService MetricsService
+
+@* Server counterpart to HostMetric: renders one per-process metric
+   (CPU / memory / threads / disk / network) through the shared MetricCard. *@
+
+<MetricCard Title="@Title"
+            DisplayValue="@FormattedValue"
+            Icon="@ResolveIcon()"
+            AvatarColor="@ResolveColor()"
+            Progress="@ProgressValue"
+            ShowProgress="@ShowProgress" />
+
+@code {
+
+    [Parameter, EditorRequired]
+    public Process Process { get; set; } = null!;
+
+    [Parameter]
+    public ProcessMetricType Metric { get; set; }
+
+    [Parameter]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter]
+    public bool ShowProgress { get; set; } = true;
+
+    [Parameter]
+    public double Value { get; set; }
+
+    [Parameter]
+    public EventCallback<double> ValueChanged { get; set; }
+
+    /// <summary>Overrides the per-metric default icon when set.</summary>
+    [Parameter]
+    public string? Icon { get; set; }
+
+    /// <summary>Overrides the per-metric default color when set.</summary>
+    [Parameter]
+    public Color? AccentColor { get; set; }
+
+    private ProcessMetricsSnapshot? _snapshot;
+    private Process? _loadedProcess;
+
+    protected override void OnInitialized()
+    {
+        MetricsService.MetricsUpdated += OnMetricsUpdated;
+    }
+
+    /// <summary>
+    /// Re-binds when the <c>Process</c> parameter changes (same card reused
+    /// for another server). The metrics event subscription is process-agnostic
+    /// (filters by PID), so only registration + snapshot need refreshing.
+    /// </summary>
+    protected override void OnParametersSet()
+    {
+        if (ReferenceEquals(_loadedProcess, Process)) return;
+        _loadedProcess = Process;
+        MetricsService.Register(Process);
+        UpdateValue();
+    }
+
+    private void OnMetricsUpdated(object? sender, ProcessMetricsSnapshot snapshot)
+    {
+        try
+        {
+            if (snapshot.ProcessId != Process.Id)
+                return;
+        }
+        catch
+        {
+            return;
+        }
+
+        _snapshot = snapshot;
+
+        UpdateValue();
+
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void UpdateValue()
+    {
+        var snapshot =
+            MetricsService.GetSnapshot(Process);
+
+        if (snapshot is null) return;
+
+        _snapshot = snapshot;
+
+        var newValue = GetMetricValue(snapshot);
+
+        if (Math.Abs(Value - newValue) > double.Epsilon)
+        {
+            Value = newValue;
+
+            if (ValueChanged.HasDelegate)
+                _ = ValueChanged.InvokeAsync(Value);
+        }
+    }
+
+    private double GetMetricValue(ProcessMetricsSnapshot snapshot)
+    {
+        return Metric switch
+        {
+            ProcessMetricType.Cpu =>
+                snapshot.CpuPercent,
+
+            ProcessMetricType.Memory =>
+                snapshot.WorkingSetBytes,
+
+            ProcessMetricType.Threads =>
+                snapshot.ThreadCount,
+
+            ProcessMetricType.DiskRead =>
+                snapshot.DiskReadBytesPerSecond,
+
+            ProcessMetricType.DiskWrite =>
+                snapshot.DiskWriteBytesPerSecond,
+
+            ProcessMetricType.NetworkReceive =>
+                snapshot.NetworkReceiveBytesPerSecond,
+
+            ProcessMetricType.NetworkSend =>
+                snapshot.NetworkSendBytesPerSecond,
+
+            _ => 0
+        };
+    }
+
+    private string FormattedValue
+    {
+        get
+        {
+            return Metric switch
+            {
+                ProcessMetricType.Cpu =>
+                    $"{Value:0.0}%",
+
+                ProcessMetricType.Memory =>
+                    FormatBytes((long)Value),
+
+                ProcessMetricType.Threads =>
+                    $"{Value:0}",
+
+                ProcessMetricType.DiskRead =>
+                    $"{FormatBytes((long)Value)}/s",
+
+                ProcessMetricType.DiskWrite =>
+                    $"{FormatBytes((long)Value)}/s",
+
+                ProcessMetricType.NetworkReceive =>
+                    $"{FormatBytes((long)Value)}/s",
+
+                ProcessMetricType.NetworkSend =>
+                    $"{FormatBytes((long)Value)}/s",
+
+                _ => Value.ToString("0.0")
+            };
+        }
+    }
+
+    private double ProgressValue
+    {
+        get
+        {
+            return Metric switch
+            {
+                ProcessMetricType.Cpu =>
+                    Math.Clamp(Value, 0, 100),
+
+                _ => 0
+            };
+        }
+    }
+
+    private string ResolveIcon() => Icon ?? Metric switch
+    {
+        ProcessMetricType.Cpu => Icons.Filled.Speed,
+        ProcessMetricType.Memory => Icons.Filled.Memory,
+        ProcessMetricType.Threads => Icons.Filled.Groups,
+        ProcessMetricType.DiskRead => Icons.Filled.Download,
+        ProcessMetricType.DiskWrite => Icons.Filled.Upload,
+        ProcessMetricType.NetworkReceive => Icons.Filled.ArrowDownward,
+        ProcessMetricType.NetworkSend => Icons.Filled.ArrowUpward,
+        _ => Icons.Filled.Computer,
+    };
+
+    private Color ResolveColor() => AccentColor ?? Metric switch
+    {
+        ProcessMetricType.Cpu => Color.Primary,
+        ProcessMetricType.Memory => Color.Secondary,
+        ProcessMetricType.Threads => Color.Tertiary,
+        ProcessMetricType.DiskRead => Color.Info,
+        ProcessMetricType.DiskWrite => Color.Info,
+        ProcessMetricType.NetworkReceive => Color.Success,
+        ProcessMetricType.NetworkSend => Color.Warning,
+        _ => Color.Primary,
+    };
+
+    private static string FormatBytes(long bytes)
+    {
+        const double KB = 1024;
+        const double MB = KB * 1024;
+        const double GB = MB * 1024;
+
+        return bytes switch
+        {
+            >= (long)GB =>
+                $"{bytes / GB:0.00} GB",
+
+            >= (long)MB =>
+                $"{bytes / MB:0.0} MB",
+
+            >= (long)KB =>
+                $"{bytes / KB:0} KB",
+
+            _ =>
+                $"{bytes} B"
+        };
+    }
+
+    public void Dispose()
+    {
+        MetricsService.MetricsUpdated -=
+            OnMetricsUpdated;
+    }
+}

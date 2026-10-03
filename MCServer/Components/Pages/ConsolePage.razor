@@ -1,0 +1,155 @@
+﻿@page "/servers/{serverId}/console"
+@using MCServer.Components.Dialogs
+@using MCServer.Plugins
+@implements IDisposable
+@inject NavigationManager Nav
+@inject GameServers GameServers
+@inject IDialogService Dialog
+@inject IJSRuntime JS
+
+<PageTitle>@(Server?.Settings.Name ?? "MCServer") - Console</PageTitle>
+
+@if (Server is null)
+{
+    @* <MudAlert Variant="Variant.Text" Severity="Severity.Info">Invalid Server. Select a valid server.</MudAlert> *@
+    <PageLoading/>
+    return;
+}
+
+<MudPopover AnchorOrigin="Origin.BottomCenter" TransformOrigin="Origin.TopCenter" Open="@Server.Progress.Open"
+            RelativeWidth="DropdownWidth.Relative" Class="mr-3 pa-4" Style="width: -webkit-fill-available;">
+    <div class="d-flex flex-column">
+        <MudText Align="Align.Center" Class="mb-2" Style="text-align: start;">@Server.Progress.ToString()</MudText>
+        <MudProgressLinear Value="@Server.Progress.DisplayValue" Indeterminate="@Server.Progress.Loading" Max="100"
+                            Min="0" Color="Color.Info" Rounded />
+    </div>
+</MudPopover>
+
+<MudHidden Breakpoint="Breakpoint.LgAndUp" Invert="true">
+    <MudStack Spacing="3" Row="true" Wrap="Wrap.Wrap">
+        <CommandButtons Commands="@Server.Commands" OnExecute="@RunDisplayCommand" />
+    </MudStack>
+</MudHidden>
+<MudHidden Breakpoint="Breakpoint.MdAndDown" Invert="true">
+    <MudMenu Label="Commands" Color="Color.Primary" EndIcon="@Icons.Filled.ArrowDropDown" Variant="Variant.Outlined"
+                AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Style="align-self: start;">
+        <CommandMenu Commands="@Server.Commands" OnExecute="@RunDisplayCommand" />
+    </MudMenu>
+</MudHidden>
+
+<div @ref="consoleDiv" style="flex-grow:1; margin:16px 0px; overflow:auto;">
+    <MudStack Spacing="2">
+        @foreach (var item in Server.OutputList.GetSnapshot())
+        {
+            <MudText Color="@item.Colour">
+                @(item.ToString())
+            </MudText>
+        }
+    </MudStack>
+</div>
+
+<MudStack Spacing="3" Row="true" AlignItems="AlignItems.Center">
+    <MudText>MCServer &gt;</MudText>
+    <MudTextField T="string" Variant="Variant.Text" Clearable Immediate @bind-Value="ConsoleCommand"
+                    OnKeyDown="@((s) => RunCommand(s.Key))" Adornment="Adornment.End" AdornmentIcon="@Icons.Rounded.ArrowBack"
+                    OnAdornmentClick="@(() => RunCommand("enter"))" Disabled="@Server.CommandRunning" />
+</MudStack>
+
+@code 
+{
+    [Parameter] public string serverId { get; set; } = "";
+    public IGameServer Server { get; set; } = null!;
+    private ElementReference consoleDiv;
+    private string ConsoleCommand { get; set; } = "";
+
+    private System.Collections.Specialized.NotifyCollectionChangedEventHandler? _outputHandler;
+    private System.ComponentModel.PropertyChangedEventHandler? _propertyHandler;
+    private System.ComponentModel.PropertyChangedEventHandler? _progressHandler;
+
+    /// <summary>
+    /// Binds <see cref="Server"/> from the route. Runs on first render and
+    /// every time <c>serverId</c> changes (Blazor reuses this component
+    /// instance when navigating between servers).
+    /// </summary>
+    protected override void OnParametersSet()
+    {
+        if (Server is not null && Server.Settings.ID == serverId) return;
+
+        DetachServer();
+
+        var server = GameServers.FindByID(serverId);
+        if (server is null)
+        {
+            Nav.NavigateTo("\\not-found");
+            return;
+        }
+
+        Server = server;
+
+            _outputHandler = async (s, e) =>
+            {
+                await InvokeAsync(StateHasChanged);
+                await JS.InvokeVoidAsync("scrollToBottom", consoleDiv, 50);
+            };
+            _propertyHandler = async (s, e) =>
+            {
+                // if(e.PropertyName == nameof(IGameServer.Progress))
+                //     if (server.Progress.Open)
+                //     {
+                //         var options = new DialogOptions() { Position = DialogPosition.TopCenter, BackdropClick = false, MaxWidth = MaxWidth.ExtraSmall, FullWidth = true };
+                //         var args = new DialogParameters<ProgressDialog> { { x => x.Progress, server.Progress } };
+                //         _ = Dialog.ShowAsync<ProgressDialog>(args, options);
+                //     }
+                
+                await InvokeAsync(StateHasChanged);
+            };
+            Server.OutputList.CollectionChanged += _outputHandler;
+            Server.PropertyChanged += _propertyHandler;
+            // Progress updates mutate the nested ProgressDisplay object, which raises
+            // its own PropertyChanged — without this the popover bar never re-renders.
+            _progressHandler = async (s, e) => await InvokeAsync(StateHasChanged);
+            Server.Progress.PropertyChanged += _progressHandler;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await JS.InvokeVoidAsync("scrollToBottom", consoleDiv, 0);
+    }
+
+    private void DetachServer()
+    {
+        if (Server is null) return;
+        if (_outputHandler is not null)
+        {
+            Server.OutputList.CollectionChanged -= _outputHandler;
+            _outputHandler = null;
+        }
+        if (_propertyHandler is not null)
+        {
+            Server.PropertyChanged -= _propertyHandler;
+            _propertyHandler = null;
+        }
+        if (_progressHandler is not null)
+        {
+            Server.Progress.PropertyChanged -= _progressHandler;
+            _progressHandler = null;
+        }
+    }
+
+    public void Dispose()
+    {
+        DetachServer();
+    }
+
+    private void RunCommand(string key)
+    {
+        if(key.Equals("enter",StringComparison.InvariantCultureIgnoreCase))
+        Server.RunCommand(ConsoleCommand);
+        ConsoleCommand = "";
+    }
+
+    private void RunDisplayCommand(ServerCommand command)
+    {
+        Server.RunCommand(command.Name);
+    }
+}

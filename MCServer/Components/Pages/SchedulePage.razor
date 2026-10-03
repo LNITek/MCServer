@@ -1,0 +1,153 @@
+﻿@page "/servers/{serverId}/schedules"
+@inject GameServers GameServers
+@inject NavigationManager Nav
+
+<PageTitle>@(Server?.Settings.Name ?? "MCServer") - Schedules</PageTitle>
+
+<style>
+    .list-page-layout {
+        height: 100%;
+        display: flex;
+        flex-direction: row;
+        gap: 16px;
+    }
+
+    .list-page {
+        width: 360px;
+        flex-shrink: 0;
+        height: 100%;
+    }
+
+    .list-page-detail {
+        flex: 1 1 auto;
+        min-width: 0;
+        height: 100%;
+        overflow: auto;
+    }
+
+    .list-page-overlay {
+        position: absolute;
+        inset: 0;
+        background: var(--mud-palette-background);
+        z-index: 10;
+        overflow: auto;
+    }
+
+    @@media (max-width: 959.98px) {
+        .list-page {
+            width: 100%;
+        }
+    }
+</style>
+
+<div style="position: relative; height: 100%;">
+    <div class="list-page-layout">
+        <MudStack Spacing="3" Class="list-page" Style="height: 100%;">
+            <MudTextField T="string" @bind-Value="SearchText" Placeholder="Search..." Clearable
+                          Variant="Variant.Outlined" Adornment="Adornment.End" AdornmentIcon="@Icons.Rounded.Search"
+                          OnAdornmentClick="@Search" TextChanged="@(s => Search(s))">
+            </MudTextField>
+
+            <MudList T="Schedule" SelectionMode="SelectionMode.SingleSelection" @bind-SelectedValue="SelectedSchedule"
+                     Style="overflow:auto; height:100%">
+                @foreach (var schedule in Schedules)
+                {
+                    <MudListItem Value="@schedule">
+                        <ChildContent>
+                            <MudStack Spacing="1" Row AlignItems="AlignItems.Center">
+                                <MudChip Color="@schedule.StateBrush" Text="@schedule.Mode.ToString()" />
+
+                                <MudStack Spacing="0">
+                                    <MudText Typo="Typo.h6">@schedule.Name</MudText>
+                                    <MudText Typo="Typo.body2">@schedule.LastRunFormatted</MudText>
+                                </MudStack>
+                            </MudStack>
+                        </ChildContent>
+                    </MudListItem>
+                }
+            </MudList>
+            <MudButton Size="Size.Large" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Rounded.Add"
+                       OnClick="AddSchedule_Click">Add Schedule</MudButton>
+        </MudStack>
+
+        <MudHidden Breakpoint="Breakpoint.SmAndDown">
+            <MudDivider Vertical />
+        </MudHidden>
+
+        <div class="list-page-detail">
+            <MudHidden Breakpoint="Breakpoint.SmAndDown">
+                <ScheduleDisplayPage Server="@Server" @bind-Schedule="SelectedSchedule"
+                                     OnStateHasChanged="StateHasChanged" />
+            </MudHidden>
+        </div>
+    </div>
+
+    @if (SelectedSchedule != default)
+    {
+        <MudHidden Breakpoint="Breakpoint.MdAndUp">
+            <div class="list-page-overlay">
+                <ScheduleDisplayPage Server="@Server" @bind-Schedule="SelectedSchedule" ShowBack
+                                     OnStateHasChanged="StateHasChanged" />
+            </div>
+        </MudHidden>
+    }
+</div>
+
+@code {
+    public ExList<Schedule> Schedules = new([]);
+    public string SearchText { get; set; } = string.Empty;
+    public Schedule? SelectedSchedule = default;
+
+    [Parameter] public string serverId { get; set; } = "";
+    public IGameServer Server { get; set; } = null!;
+    
+    /// <summary>
+    /// Binds <see cref="Server"/> from the route. Runs on first render and
+    /// every time <c>serverId</c> changes (Blazor reuses this component
+    /// instance when navigating between servers).
+    /// </summary>
+    protected override void OnParametersSet()
+    {
+        if (Server is not null && Server.Settings.ID == serverId) return;
+
+        var server = GameServers.FindByID(serverId);
+        if (server is null)
+        {
+            Nav.NavigateTo("\\not-found");
+            return;
+        }
+
+        Server = server;
+        SearchText = "";
+        SelectedSchedule = default;
+        Schedules = new(Server.ServerSchedules);
+        //SelectedSchedule = Server.ServerSchedules.FirstOrDefault();
+
+        Schedules.SetSort((a, b) => a.Name?.CompareTo(b.Name ?? "") ?? 0);
+        Schedules.SetFilter(filter =>
+        {
+            if (string.IsNullOrWhiteSpace(SearchText)) return true;
+            return filter.Name.Contains(SearchText, StringComparison.OrdinalIgnoreCase);
+        });
+    }
+
+    private void AddSchedule_Click()
+    {
+        if (Server == null) return;
+        Server.ServerSchedules.Add(new Schedule());
+        SelectedSchedule = Server.ServerSchedules.LastOrDefault();
+        StateHasChanged();
+    }
+
+    private void Search(string value)
+    {
+        SearchText = value;
+        Search();
+    }
+
+    private void Search()
+    {
+        Schedules.RefreshFilter();
+        StateHasChanged();
+    }
+}
