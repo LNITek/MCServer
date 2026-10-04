@@ -75,6 +75,22 @@
         {
             await JS.InvokeVoidAsync("mcserverPostLogin", _username.Trim(), _password, ReturnUrl ?? "");
         }
+        catch (JSDisconnectedException)
+        {
+            _localError = "Connection lost. Please retry.";
+        }
+        catch (TaskCanceledException)
+        {
+            _localError = "Request was cancelled. Please retry.";
+        }
+        catch (InvalidOperationException)
+        {
+            _localError = "Login is not ready yet. Please retry.";
+        }
+        catch (Exception)
+        {
+            _localError = "Login failed to submit. Please retry.";
+        }
         finally
         {
             _busy = false;

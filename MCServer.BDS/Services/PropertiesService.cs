@@ -53,9 +53,15 @@ public static class BedrockPropertiesService
         while (!Reader.EndOfStream)
         {
             var Line = Reader.ReadLine();
-            while (string.IsNullOrWhiteSpace(Line))
+            // Skip blank lines, but never spin at EOF: ReadLine() returns null
+            // forever once the end is reached (this used to hang the caller).
+            while (string.IsNullOrWhiteSpace(Line) && !Reader.EndOfStream)
                 Line = Reader.ReadLine();
+            if (string.IsNullOrWhiteSpace(Line))
+                continue;
             var Prop = Line!.Split('=');
+            if (Prop.Length < 2)
+                continue; // malformed line (no '='): skip instead of crashing.
             var Com = new List<string>();
             var Mode = PropertyEditMode.None;
             Line = Reader.ReadLine();
@@ -128,7 +134,10 @@ public static class BedrockPropertiesService
         }
         foreach (var item in GetPermissions(server))
         {
-            var permission = Enum.Parse<PlayerPermission>(item.permission, true);
+            // Skip unknown values (e.g. "default" written by older versions)
+            // instead of crashing player load on Enum.Parse.
+            if (!Enum.TryParse<PlayerPermission>(item.permission, true, out var permission))
+                continue;
             var player = Players.Find(x => x.Xuid == item.xuid);
             if (player is null)
             {
@@ -149,7 +158,9 @@ public static class BedrockPropertiesService
         File.WriteAllText(server.ServerPath + "/players.json", json);
         json = JsonConvert.SerializeObject(Players.Where(x => x.WhiteList).Select(x => x.AsAllowList()));
         File.WriteAllText(server.ServerPath + "/allowlist.json", json);
-        json = JsonConvert.SerializeObject(Players.Select(x => x.AsPermission()));
+        // "Default" is not a real BDS permission (valid: operator/member/visitor).
+        // Such players must be omitted entirely, not written as "default".
+        json = JsonConvert.SerializeObject(Players.Where(x => x.Permissions != PlayerPermission.Default).Select(x => x.AsPermission()));
         File.WriteAllText(server.ServerPath + "/permissions.json", json);
     }
 

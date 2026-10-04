@@ -19,17 +19,28 @@ public static class SchedulerService
         if (!File.Exists(server.SchedulesPath()))
             return [];
 
-        using var stream = File.Open(server.SchedulesPath(), FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-        using var reader = new StreamReader(stream);
-        using var jsonReader = new JsonTextReader(reader);
-        var serializer = JsonSerializer.Create(JsonOptions.SerializerSettings);
-        var schedules = serializer.Deserialize<Schedule[]>(jsonReader);
+        // Never let a corrupt schedules.json take down server startup.
+        try
+        {
+            using var stream = File.Open(server.SchedulesPath(), FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            using var reader = new StreamReader(stream);
+            using var jsonReader = new JsonTextReader(reader);
+            var serializer = JsonSerializer.Create(JsonOptions.SerializerSettings);
+            var schedules = serializer.Deserialize<Schedule[]>(jsonReader);
 
-        return [.. schedules ?? []];
+            return [.. schedules ?? []];
+        }
+        catch
+        {
+            return [];
+        }
     }
 
     public static void SetSchedules(this IGameServer server, IEnumerable<Schedule> schedules)
     {
+        var dir = Path.GetDirectoryName(server.SchedulesPath());
+        if (!string.IsNullOrEmpty(dir))
+            Directory.CreateDirectory(dir);
         var json = JsonConvert.SerializeObject(schedules, JsonOptions.SerializerSettings);
         File.WriteAllText(server.SchedulesPath(), json);
     }
@@ -100,26 +111,33 @@ public static class SchedulerService
 
     private static TimeSpan? CalculateDelay(Schedule schedule)
     {
-        if (schedule.StartDate.Date < DateTime.Today) return null;
         var now = DateTime.Now;
         TimeSpan? delay = null;
 
         switch (schedule.Mode)
         {
             case ScheduleMode.Once:
-                var scheduledTime = now + schedule.Time;
-                if (scheduledTime <= now)
-                    scheduledTime = scheduledTime.AddDays(1);
-                delay = scheduledTime - now;
+                // Fire at StartDate + Time. If today's time already passed,
+                // roll to tomorrow; a date in the past never fires.
+                var target = schedule.StartDate.Date + schedule.Time;
+                if (target <= now)
+                {
+                    if (schedule.StartDate.Date >= DateTime.Today)
+                        target = target.AddDays(1);
+                    else
+                        return null;
+                }
+                delay = target - now;
                 break;
 
             case ScheduleMode.Range:
-                if (now < schedule.EndDate)
-                    delay = CalculateCronDelay(schedule.Cron, now);
+                if (schedule.Cron is null || now.Date > schedule.EndDate.Date) return null;
+                delay = CalculateCronDelay(schedule.Cron, now < schedule.StartDate ? schedule.StartDate.Date : now);
                 break;
 
             case ScheduleMode.Indefinite:
-                delay = CalculateCronDelay(schedule.Cron, now);
+                if (schedule.Cron is null) return null;
+                delay = CalculateCronDelay(schedule.Cron, now < schedule.StartDate ? schedule.StartDate.Date : now);
                 break;
         }
 

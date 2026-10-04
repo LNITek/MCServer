@@ -134,8 +134,13 @@
     private void AddSchedule_Click()
     {
         if (Server == null) return;
-        Server.ServerSchedules.Add(new Schedule());
-        SelectedSchedule = Server.ServerSchedules.LastOrDefault();
+        var schedule = new Schedule();
+        Server.ServerSchedules.Add(schedule);
+        SelectedSchedule = schedule;
+        // Persist immediately so the new schedule survives an app restart
+        // even if the user never presses save.
+        Server.SetSchedules(Server.ServerSchedules);
+        Schedules.RefreshFilter();
         StateHasChanged();
     }
 

@@ -3,12 +3,11 @@
     <File Path=".gitattributes" />
     <File Path=".gitignore" />
     <File Path="ChangeLog.md" />
+    <File Path="License.txt" />
     <File Path="README.md" />
   </Folder>
-  <Project Path="MCServer/MCServer.csproj" />
-  <Project Path="MCServer.Plugin/MCServer.Plugin.csproj" />
   <Project Path="MCServer.BDS/MCServer.BDS.csproj" />
-  <Project Path="MCServer.Installer/MCServer.Installer.wixproj">
-    <Build />
-  </Project>
+  <Project Path="MCServer.Installer/MCServer.Installer.wixproj" Type="b7dd6f7e-def8-4e67-b5b7-07ef123db6f0" />
+  <Project Path="MCServer.Plugin/MCServer.Plugin.csproj" />
+  <Project Path="MCServer/MCServer.csproj" />
 </Solution>

@@ -13,156 +13,90 @@
         <MudItem xs="12">
             <MudAlert Variant="Variant.Text" Severity="Severity.Info">Select a world, or import a .zip / .tar.gz / .mcworld
                 archive.</MudAlert>
-            </MudItem>
-            return;
-        }
+        </MudItem>
+        return;
+    }
 
-        @if (Busy)
-        {
-            <MudItem xs="12">
-                <MudProgressLinear Indeterminate />
-            </MudItem>
-        }
+    <MudItem xs="12">
+        <MudStack Spacing="1" Row>
+            @if (ShowBack)
+            {
+                <MudIconButton Variant="Variant.Text" Color="Color.Inherit" Icon="@Icons.Filled.ArrowBack"
+                               OnClick="ShowList" />
+            }
 
-        <MudItem xs="12">
-            <MudStack Spacing="1" Row>
-                @if (ShowBack)
-                {
-                    <MudIconButton Variant="Variant.Text" Color="Color.Inherit" Icon="@Icons.Filled.ArrowBack"
-                                   OnClick="ShowList" />
-                }
+            <MudHidden Breakpoint="Breakpoint.SmAndDown">
+                <MudText Typo="Typo.h6" Style="flex-grow:1;">@World.DisplayName</MudText>
+            </MudHidden>
 
-                <MudHidden Breakpoint="Breakpoint.SmAndDown">
-                    @if (Busy)
-                    {
-                        <MudText Typo="Typo.body2">@BusyMessage</MudText>
-                    }
-                    else
-                    {
-                        <MudText Typo="Typo.h6" Style="flex-grow:1;">@World.DisplayName</MudText>
-                    }
+            <MudSpacer />
 
-                </MudHidden>
-
-                <MudSpacer />
-
-                @if (World.Name == ActiveWorldName)
-                {
-                    <MudTooltip Text="Active">
-                        <MudIconButton Icon="@Icons.Filled.CheckCircle" Color="Color.Success" Disabled />
-                    </MudTooltip>
-                }
-                else
-                {
-                    <MudTooltip Text="@(Server.ServerRunning ? "Switch (restarts server)" : "Activate")">
-                        <MudIconButton Icon="@Icons.Filled.RadioButtonUnchecked"
-                                       OnClick="@(() => OnSelectWorld.InvokeAsync(World))" Disabled="@Busy" />
-                    </MudTooltip>
-                }
-
-                <MudTooltip Text="Import Pack">
-                    <MudFileUpload T="IBrowserFile" FilesChanged="@(f => ImportPack(PackKind.Behavior, f))"
-                                   Accept=".mcpack,.mcaddon,.zip" MaximumFileCount="1"
-                                   Disabled="@(Busy || (World?.Name == ActiveWorldName && Server.ServerRunningStatus))">
-                        <CustomContent>
-                            <MudIconButton Icon="@Icons.Rounded.Download" Color="Color.Inherit"
-                                           OnClick="@context.OpenFilePickerAsync"
-                                           Disabled="@(Busy || (World?.Name == ActiveWorldName && Server.ServerRunningStatus))" />
-                        </CustomContent>
-                    </MudFileUpload>
+            @if (World.Name == ActiveWorldName)
+            {
+                <MudTooltip Text="Active">
+                    <MudIconButton Icon="@Icons.Filled.CheckCircle" Color="Color.Success" Disabled />
                 </MudTooltip>
-
-                <MudTooltip Text="Export World">
-                    <MudMenu Label="Export" Color="Color.Info" Icon="@Icons.Rounded.CloudUpload"
-                             Disabled="@(Busy || (World?.Name == ActiveWorldName && Server.ServerRunningStatus))">
-                        <MudMenuItem Label=".zip" OnClick="@(() => ExportWorld(WorldArchiveFormat.Zip))" />
-                        <MudMenuItem Label=".tar.gz" OnClick="@(() => ExportWorld(WorldArchiveFormat.TarGz))" />
-                        <MudMenuItem Label=".mcworld" OnClick="@(() => ExportWorld(WorldArchiveFormat.McWorld))" />
-                    </MudMenu>
+            }
+            else
+            {
+                <MudTooltip Text="@(Server.ServerRunning ? "Switch (restarts server)" : "Activate")">
+                    <MudIconButton Icon="@Icons.Filled.RadioButtonUnchecked"
+                                   OnClick="@(() => OnSelectWorld.InvokeAsync(World))" Disabled="@Busy" />
                 </MudTooltip>
+            }
 
-                <MudTooltip Text="Trim chunks">
-                    <MudIconButton Color="Color.Warning" Icon="@Icons.Rounded.Crop" OnClick="TrimWorld_Click"
-                                   Disabled="@(Busy || (World?.Name == ActiveWorldName && Server.ServerRunningStatus))" />
-                </MudTooltip>
+            <MudTooltip Text="Import Pack">
+                <MudFileUpload T="IBrowserFile" FilesChanged="@(f => ImportPack(PackKind.Behavior, f))"
+                               Accept=".mcpack,.mcaddon,.zip" MaximumFileCount="1"
+                                    Disabled="@(Busy || (World?.Name == ActiveWorldName && Server.ServerRunningStatus))"
+                                    @ref="_packUpload">
+                    <CustomContent>
+                        <MudIconButton Icon="@Icons.Rounded.Download" Color="Color.Inherit"
+                                       OnClick="@context.OpenFilePickerAsync"
+                                       Disabled="@(Busy || (World?.Name == ActiveWorldName && Server.ServerRunningStatus))" />
+                    </CustomContent>
+                        @* Empty template: suppresses the selected-file chip/token. *@
+                        <SelectedTemplate />
+                </MudFileUpload>
+            </MudTooltip>
+
+            <MudTooltip Text="Export World">
+                <MudMenu Label="Export" Color="Color.Info" Icon="@Icons.Rounded.CloudUpload"
+                         Disabled="@(Busy || (World?.Name == ActiveWorldName && Server.ServerRunningStatus))">
+                    <MudMenuItem Label=".zip" OnClick="@(() => ExportWorld(WorldArchiveFormat.Zip))" />
+                    <MudMenuItem Label=".tar.gz" OnClick="@(() => ExportWorld(WorldArchiveFormat.TarGz))" />
+                    <MudMenuItem Label=".mcworld" OnClick="@(() => ExportWorld(WorldArchiveFormat.McWorld))" />
+                </MudMenu>
+            </MudTooltip>
+
+            <MudTooltip Text="Trim chunks">
+                <MudIconButton Color="Color.Warning" Icon="@Icons.Rounded.Crop" OnClick="TrimWorld_Click"
+                               Disabled="@(Busy || (World?.Name == ActiveWorldName && Server.ServerRunningStatus))" />
+            </MudTooltip>
                 
-                <MudTooltip Text="Delete World">
-                    <MudIconButton Color="Color.Error" Icon="@Icons.Rounded.Delete" OnClick="DeleteWorld_Click"
-                                   Disabled="@(Busy || (World?.Name == ActiveWorldName && Server.ServerRunningStatus))" />
-                </MudTooltip>
+            <MudTooltip Text="Delete World">
+                <MudIconButton Color="Color.Error" Icon="@Icons.Rounded.Delete" OnClick="DeleteWorld_Click"
+                               Disabled="@(Busy || (World?.Name == ActiveWorldName && Server.ServerRunningStatus))" />
+            </MudTooltip>
+        </MudStack>
+    </MudItem>
+    
+    <MudHidden Breakpoint="Breakpoint.MdAndUp">
+        <MudItem xs="12">
+            <MudStack>
+                <MudText Typo="Typo.h6" Style="flex-grow:1;">@World.DisplayName</MudText>
+                <MudDivider />
             </MudStack>
         </MudItem>
-    
+    </MudHidden>
 
-        <MudHidden Breakpoint="Breakpoint.MdAndUp">
-            <MudItem xs="12">
-                <MudStack>
-                    @if (Busy)
-                    {
-                        <MudText Typo="Typo.body2">@BusyMessage</MudText>
-                    }
-                    else
-                    {
-                        <MudText Typo="Typo.h6" Style="flex-grow:1;">@World.DisplayName</MudText>
-                    }
+    <MudItem xs="12" Style="align-content: center;">
+        <MudText Typo="Typo.h6">Resource Packs (@World.ResourcePacks.Count)</MudText>
+    </MudItem>
 
-                    <MudDivider />
-                </MudStack>
-            </MudItem>
-        </MudHidden>
-
-        <MudItem xs="12" Style="align-content: center;">
-            <MudText Typo="Typo.h6">Resource Packs (@World.ResourcePacks.Count)</MudText>
-        </MudItem>
-
-        <MudItem xs="12">
-            <MudStack Spacing="4">
-                <MudTable Items="@World.ResourcePacks" Dense Hover>
-                    <HeaderContent>
-                        <MudTh>Name</MudTh>
-                        <MudTh Style="width: 110px; text-align: right;">Version</MudTh>
-                        <MudTh Style="width: 110px; text-align: right;">Size</MudTh>
-                        <MudTh Style="width: 110px;" />
-                    </HeaderContent>
-                    <RowTemplate>
-                        <MudTd DataLabel="Name">@context.DisplayName</MudTd>
-                        <MudTd DataLabel="Version" Style="text-align:right; min-width: 110px; flex-grow: 1;">
-                            @context.DisplayVersion
-                        </MudTd>
-                        <MudTd DataLabel="Size" Style="text-align:right; min-width: 110px; flex-grow: 1;">
-                            @Plugins.OtherHelpers.FormatSize(context.SizeBytes)
-                        </MudTd>
-                        <MudTd Style="text-align:right; min-width: 110px; flex-grow: 1;">
-                            <MudStack Row Justify="Justify.FlexEnd">
-                                <MudTooltip Text="Export Pack">
-                                    <MudIconButton Size="Size.Small" Icon="@Icons.Rounded.Upload" Color="Color.Info"
-                                                   OnClick="@(() => ExportPack(PackKind.Resource, context.Name))" Disabled="@Busy" />
-                                </MudTooltip>
-                                <MudTooltip Text="Delete Pack">
-                                    <MudIconButton Size="Size.Small" Color="Color.Error" Icon="@Icons.Rounded.Delete"
-                                                   OnClick="@(() => DeletePack(PackKind.Resource, context.Name))"
-                                                   Disabled="@(Busy || (World?.Name == ActiveWorldName && Server.ServerRunningStatus))" />
-                                </MudTooltip>
-                            </MudStack>
-                        </MudTd>
-                    </RowTemplate>
-                    <NoRecordsContent>
-                        <MudText Typo="Typo.body2">No resource packs in this world.</MudText>
-                    </NoRecordsContent>
-                </MudTable>
-            </MudStack>
-        </MudItem>
-    
-        <MudItem xs="12">
-            <MudDivider />
-        </MudItem>
-
-        <MudItem xs="12" Style="align-content: center;">
-            <MudText Typo="Typo.h6" Class="mt-2">Addons / Behavior Packs (@World.BehaviorPacks.Count)</MudText>
-        </MudItem>
-
-        <MudItem xs="12">
-            <MudTable Items="@World.BehaviorPacks" Dense Hover>
+    <MudItem xs="12">
+        <MudStack Spacing="4">
+            <MudTable Items="@World.ResourcePacks" Dense Hover>
                 <HeaderContent>
                     <MudTh>Name</MudTh>
                     <MudTh Style="width: 110px; text-align: right;">Version</MudTh>
@@ -181,24 +115,71 @@
                         <MudStack Row Justify="Justify.FlexEnd">
                             <MudTooltip Text="Export Pack">
                                 <MudIconButton Size="Size.Small" Icon="@Icons.Rounded.Upload" Color="Color.Info"
-                                               OnClick="@(() => ExportPack(PackKind.Behavior, context.Name))" Disabled="@Busy" />
+                                               OnClick="@(() => ExportPack(PackKind.Resource, context.Name))" Disabled="@Busy" />
                             </MudTooltip>
                             <MudTooltip Text="Delete Pack">
                                 <MudIconButton Size="Size.Small" Color="Color.Error" Icon="@Icons.Rounded.Delete"
-                                               OnClick="@(() => DeletePack(PackKind.Behavior, context.Name))"
+                                               OnClick="@(() => DeletePack(PackKind.Resource, context.Name))"
                                                Disabled="@(Busy || (World?.Name == ActiveWorldName && Server.ServerRunningStatus))" />
                             </MudTooltip>
                         </MudStack>
                     </MudTd>
                 </RowTemplate>
                 <NoRecordsContent>
-                    <MudText Typo="Typo.body2">No addons in this world.</MudText>
+                    <MudText Typo="Typo.body2">No resource packs in this world.</MudText>
                 </NoRecordsContent>
             </MudTable>
-        </MudItem>
-    </MudGrid>
+        </MudStack>
+    </MudItem>
+    
+    <MudItem xs="12">
+        <MudDivider />
+    </MudItem>
+
+    <MudItem xs="12" Style="align-content: center;">
+        <MudText Typo="Typo.h6" Class="mt-2">Addons / Behavior Packs (@World.BehaviorPacks.Count)</MudText>
+    </MudItem>
+
+    <MudItem xs="12">
+        <MudTable Items="@World.BehaviorPacks" Dense Hover>
+            <HeaderContent>
+                <MudTh>Name</MudTh>
+                <MudTh Style="width: 110px; text-align: right;">Version</MudTh>
+                <MudTh Style="width: 110px; text-align: right;">Size</MudTh>
+                <MudTh Style="width: 110px;" />
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Name">@context.DisplayName</MudTd>
+                <MudTd DataLabel="Version" Style="text-align:right; min-width: 110px; flex-grow: 1;">
+                    @context.DisplayVersion
+                </MudTd>
+                <MudTd DataLabel="Size" Style="text-align:right; min-width: 110px; flex-grow: 1;">
+                    @Plugins.OtherHelpers.FormatSize(context.SizeBytes)
+                </MudTd>
+                <MudTd Style="text-align:right; min-width: 110px; flex-grow: 1;">
+                    <MudStack Row Justify="Justify.FlexEnd">
+                        <MudTooltip Text="Export Pack">
+                            <MudIconButton Size="Size.Small" Icon="@Icons.Rounded.Upload" Color="Color.Info"
+                                           OnClick="@(() => ExportPack(PackKind.Behavior, context.Name))" Disabled="@Busy" />
+                        </MudTooltip>
+                        <MudTooltip Text="Delete Pack">
+                            <MudIconButton Size="Size.Small" Color="Color.Error" Icon="@Icons.Rounded.Delete"
+                                           OnClick="@(() => DeletePack(PackKind.Behavior, context.Name))"
+                                           Disabled="@(Busy || (World?.Name == ActiveWorldName && Server.ServerRunningStatus))" />
+                        </MudTooltip>
+                    </MudStack>
+                </MudTd>
+            </RowTemplate>
+            <NoRecordsContent>
+                <MudText Typo="Typo.body2">No addons in this world.</MudText>
+            </NoRecordsContent>
+        </MudTable>
+    </MudItem>
+</MudGrid>
     
 @code {
+    private MudFileUpload<IBrowserFile>? _packUpload;
+
     [Parameter]
     public WorldInfo? World
     {
@@ -419,6 +400,8 @@
         {
             if (staged is not null)
                 BedrockResourceService.DiscardStagedImport(staged);
+            // Clear the picker selection so no chip lingers and the same file can be picked again.
+            try { if (_packUpload is not null) await _packUpload.ClearAsync(); } catch { }
             Busy = false;
             UpdateState();
         }

@@ -41,6 +41,12 @@ Have an issue or feature in mind don't hesitate to post them [here](https://gith
 2. Run `MCServer.msi` from the [latest release](https://github.com/LNITek/MCServer/releases/latest) (installs to `C:\Program Files\MCServer\` with Start Menu shortcuts).
 3. Start **MCServer** and open `http://localhost:5000`.
 
+Run this command to allow BDS software access though the firewall.
+```
+Get-ChildItem "$env:APPDATA\MCServer\Servers" -Recurse -Filter bedrock_server.exe |
+  ForEach-Object { New-NetFirewallRule -DisplayName "Bedrock Server ($($_.Directory.Name))" -Direction Inbound -Program $_.FullName -Action Allow }
+```
+
 ## Security
 
 Log in with `Admin` / `Admin`. Change the credentials immediately under Settings after installation.
@@ -49,6 +55,12 @@ Log in with `Admin` / `Admin`. Change the credentials immediately under Settings
 The auth system is not tested agains any bad actors. I would keep the web UI LAN only.
 
 The project is AI assisted. Not all code writen by AI has been audited.
+
+## Build
+```
+dotnet build MCServer.slnx -c Release
+```
+The installer file is under `MCServer.Installer/bin/Release/en-US/MCServer.msi`
 
 ## Platform Features
 
