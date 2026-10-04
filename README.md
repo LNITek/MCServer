@@ -3,6 +3,8 @@
 ![.NET](https://img.shields.io/badge/.NET-10-512BD4.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows%20x64-blue.svg)
 
+[![RepoRanker](https://reporanker.com/badge/LNITek/MCServer)](https://reporanker.com/repos/LNITek/MCServer)
+
 `MCServer` is a self-hosted web UI for managing Minecraft servers. The host itself is server-type agnostic — game support comes from plugins.
 
 > ***Note!*** This software is optimised for private home servers. For public servers, use it at your own risk.

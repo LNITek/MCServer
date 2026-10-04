@@ -1,14 +1,14 @@
 # V0.3.1
 Fixed: Crash relating to console.
 Fixed: Added command field to schedules.
-Fixed: Schedules not reading & writing corectly.
+Fixed: Schedules not reading & writing correctly.
 Fixed: Custom server properties using the same value for all fields.
-Fixed: Player permitions now save properly.
-Fixed: World import & other import / export functions.
+Fixed: Player permissions now save properly.
+Fixed: World import & other import/export functions.
 
 Added: Host logging with Serilog
 Added: Apache V2 License.
-Added: Readme File to BDS.
+Added: README file to BDS.
 Added: `help` command for server console.
 
 # V0.3.0

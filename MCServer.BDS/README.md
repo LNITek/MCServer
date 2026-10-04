@@ -30,6 +30,7 @@ Any issue or feature for the `Base Software (Bedrock Dedicated Server)` can be r
 | Server version control | :x: | |
 | World version control | :x: | |
 | Server scripting | :x: | |
+| World map viewer | :x: | |
 
 ## Commands
 
