@@ -54,11 +54,11 @@
         <MudStack Spacing="4">
             @if (Property.Mode == PropertyEditMode.Custom)
             {
-                <MudTextField Variant="Variant.Outlined" T="string" Label="Name" @bind-Value="Property.Value">
+                <MudTextField Variant="Variant.Outlined" T="string" Label="Name" @bind-Value="Property.Name">
                 </MudTextField>
                 <MudTextField Variant="Variant.Outlined" T="string" Label="Value" @bind-Value="Property.Value">
                 </MudTextField>
-                <MudTextField Variant="Variant.Outlined" T="string" Placeholder="Description" @bind-Value="Property.Value"
+                <MudTextField Variant="Variant.Outlined" T="string" Placeholder="Description" @bind-Value="Property.Desc"
                               MaxLines="25">
                 </MudTextField>
             }

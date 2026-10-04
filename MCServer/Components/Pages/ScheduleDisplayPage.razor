@@ -42,39 +42,53 @@
     </MudItem>
 
     <MudItem xs="12">
-        <MudTextField Variant="Variant.Outlined" T="string" Label="Name" @bind-Value="Schedule.Name"></MudTextField>
+        <MudTextField Variant="Variant.Outlined" T="string" Label="Name" @bind-Value="Schedule.Name" />
     </MudItem>
     <MudItem xs="12">
-        <MudTextField Variant="Variant.Outlined" T="string" Style="min-height:150px" Label="Description"
-                      @bind-Value="Schedule.Description"></MudTextField>
+        <MudTextField Variant="Variant.Outlined" T="string" Style="min-height:150px; flex-wrap: wrap;"
+                      Label="Description" @bind-Value="Schedule.Description" />
+    </MudItem>
+    <MudItem xs="12">
+        <MudTextField Variant="Variant.Outlined" T="string" Label="Command" @bind-Value="Schedule.Command" />
     </MudItem>
 
     @if (Schedule.Mode is ScheduleMode.Once)
     {
         <MudItem xs="12" md="6">
-            <MudDatePicker Label="Date" Variant="Variant.Outlined"></MudDatePicker>
+            <MudDatePicker Label="Date" Variant="Variant.Outlined" Date="@Schedule.StartDate"
+                           DateChanged="@((DateTime? d) => { if (d.HasValue) Schedule.StartDate = d.Value.Date; })" />
         </MudItem>
         <MudItem xs="12" md="6">
-            <MudTimePicker Label="Time" Variant="Variant.Outlined"></MudTimePicker>
+            <MudTimePicker Label="Time" Variant="Variant.Outlined" Time="@Schedule.Time"
+                           TimeChanged="@((TimeSpan? t) => { if (t.HasValue) Schedule.Time = t.Value; })" />
         </MudItem>
     }
 
     @if (Schedule.Mode is ScheduleMode.Range)
     {
         <MudItem xs="12" md="6">
-            <MudDateRangePicker Label="Date" Variant="Variant.Outlined"></MudDateRangePicker>
+            <MudDateRangePicker Label="Date" Variant="Variant.Outlined"
+                                DateRange="@(new DateRange(Schedule.StartDate.Date, Schedule.EndDate.Date))"
+                                DateRangeChanged="OnDateRangeChanged" />
         </MudItem>
         <MudItem xs="12" md="6">
-            <MudTextField Variant="Variant.Outlined" T="string" Label="Cron Expression"></MudTextField>
+            <MudTextField Variant="Variant.Outlined" T="string" Label="Cron Expression"
+                          Value="@CronText" ValueChanged="OnCronChanged"
+                          Error="@(_cronError is not null)" ErrorText="@_cronError"
+                          HelperText="e.g. 0 12 * * * (daily at noon)" />
         </MudItem>
     }
     @if (Schedule.Mode is ScheduleMode.Indefinite)
     {
         <MudItem xs="12" md="6">
-            <MudDatePicker Label="Start Date" Variant="Variant.Outlined"></MudDatePicker>
+            <MudDatePicker Label="Start Date" Variant="Variant.Outlined" Date="@Schedule.StartDate"
+                           DateChanged="@((DateTime? d) => { if (d.HasValue) Schedule.StartDate = d.Value.Date; })" />
         </MudItem>
         <MudItem xs="12" md="6">
-            <MudTextField Variant="Variant.Outlined" T="string" Label="Cron Expression"></MudTextField>
+            <MudTextField Variant="Variant.Outlined" T="string" Label="Cron Expression"
+                          Value="@CronText" ValueChanged="OnCronChanged"
+                          Error="@(_cronError is not null)" ErrorText="@_cronError"
+                          HelperText="e.g. 0 12 * * * (daily at noon)" />
         </MudItem>
     }
 </MudGrid>
@@ -88,10 +102,12 @@
         {
             if (_schedule == value) return;
             _schedule = value;
+            _cronError = null;
             ScheduleChanged.InvokeAsync(value);
         }
     }
     private Schedule? _schedule { get; set; } = default;
+    private string? _cronError;
     [Parameter]
     public EventCallback<Schedule?> ScheduleChanged { get; set; }
 
@@ -137,7 +153,33 @@
 
     private void ScheduleModeChanged(ScheduleMode mode)
     {
-        Schedule?.mode = mode;
+        if (Schedule is null) return;
+        Schedule.Mode = mode;
         UpdateState();
+    }
+
+    /// <summary>Text shown in the cron box. Cronos normalizes on parse
+    /// (e.g. */15 becomes 0,15,30,45), which is why this is a proxy.</summary>
+    private string CronText => Schedule?.Cron?.ToString() ?? "";
+
+    private void OnCronChanged(string text)
+    {
+        if (Schedule is null) return;
+        if (Cronos.CronExpression.TryParse(text, out var cron) && cron is not null)
+        {
+            Schedule.Cron = cron;
+            _cronError = null;
+        }
+        else
+        {
+            _cronError = "Invalid cron expression (e.g. 0 12 * * *).";
+        }
+    }
+
+    private void OnDateRangeChanged(DateRange? range)
+    {
+        if (Schedule is null || range is null) return;
+        if (range.Start.HasValue) Schedule.StartDate = range.Start.Value.Date;
+        if (range.End.HasValue) Schedule.EndDate = range.End.Value.Date;
     }
 }

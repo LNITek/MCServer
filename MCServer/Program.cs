@@ -12,6 +12,8 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.Extensions.Options;
 using MudBlazor;
 using MudBlazor.Services;
+using Serilog;
+using Serilog.Events;
 
 namespace MCServer;
 
@@ -27,6 +29,13 @@ public class Program
 
     public static string ServerPath = Path.GetFullPath(Path.Combine(RootPath, "Servers"));
     public static string PluginsPath = Path.GetFullPath(Path.Combine(RootPath, "Plugins"));
+
+    /// <summary>
+    /// Crash/exception log folder. Same writable data folder as settings.json
+    /// so it works without elevation and survives install/upgrade/uninstall.
+    /// Files: Logs/mcserver-YYYYMMDD.log (14 day retention).
+    /// </summary>
+    public static string LogsPath => Path.GetFullPath(Path.Combine(RootPath, "Logs"));
 
     /// <summary>
     /// User-data settings file (users, servers). Lives under the data folder:
@@ -53,6 +62,35 @@ public class Program
         // for standard users and is replaced on upgrade). Ensure it exists for
         // both the web host and the --reset-auth CLI below.
         Directory.CreateDirectory(RootPath);
+        Directory.CreateDirectory(LogsPath);
+
+        // Crash catcher: bootstrap the file logger FIRST so even startup
+        // failures are written to Logs/mcserver-*.log, then hook the
+        // process-wide handlers for anything that escapes try/catch.
+        // NOTE: .NET still terminates the process on AppDomain.UnhandledException
+        // — the handler can only guarantee the crash is logged. True crash
+        // prevention happens via try/catch at the source (e.g. ConsolePage JSInterop).
+        ConfigureCrashLogging();
+
+        try
+        {
+            RunHost(args);
+        }
+        catch (Exception ex)
+        {
+            // Host-level fatal (startup, pipeline, app.Run): log to file + console, then exit non-zero.
+            Log.Fatal(ex, "Host terminated unexpectedly");
+            Console.WriteLine($"Fatal error: {ex.Message} (see {LogsPath} for details)");
+            Environment.Exit(1);
+        }
+        finally
+        {
+            Log.CloseAndFlush();
+        }
+    }
+
+    private static void RunHost(string[] args)
+    {
 
         // Host CLI: reset the admin login without starting the web server.
         // Usage: MCServer --reset-auth
@@ -65,6 +103,21 @@ public class Program
         }
 
         var builder = WebApplication.CreateBuilder(args);
+
+        // File + console logging via Serilog. File always goes to the writable
+        // data folder (Logs/mcserver-YYYYMMDD.log, 14-day retention) so the
+        // Windows install (Program Files) never hits ACL issues.
+        builder.Host.UseSerilog((ctx, services, cfg) => cfg
+            .ReadFrom.Configuration(ctx.Configuration)
+            .MinimumLevel.Information()
+            .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+            .Enrich.FromLogContext()
+            .WriteTo.Console()
+            .WriteTo.File(
+                Path.Combine(LogsPath, "mcserver-.log"),
+                rollingInterval: RollingInterval.Day,
+                retainedFileCountLimit: 14,
+                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {SourceContext} {Message:lj}{NewLine}{Exception}"));
 
         // Layer the data-folder settings over the shipped defaults so UI-saved
         // users/servers win without ever writing into the install directory.
@@ -118,6 +171,7 @@ public class Program
         builder.Services.AddHostedService<ConsoleReaderService>();
         builder.Services.AddSingleton<ProcessMetricsService>();
         builder.Services.AddSingleton<HostMetricsService>();
+        builder.Services.AddHostedService<MetricRecorderService>();
         builder.Services.AddScoped<PageHeaderService>();
 
         var app = builder.Build();
@@ -138,6 +192,7 @@ public class Program
             gameServers.RegisterPlugin(plugin);
 
         gameServers.Register(Settings.ServerSettings, serverHost);
+        AutoStartServers(gameServers);
 
         // Configure the HTTP request pipeline.
         if (!app.Environment.IsDevelopment())
@@ -189,6 +244,30 @@ public class Program
         app.Lifetime.ApplicationStopping.Register(() => gameServers.Dispose());
 
         app.Run();
+    }
+
+    /// <summary>
+    /// Boots every registered server flagged with <c>AutoStart</c>.
+    /// Each start is isolated: one bad server (missing exe, bad folder)
+    /// is logged and skipped instead of taking down app startup.
+    /// Starts are fire-and-forget (each server spawns its own thread).
+    /// </summary>
+    private static void AutoStartServers(GameServers gameServers)
+    {
+        foreach (var server in gameServers.Where(s => s.Settings.AutoStart))
+        {
+            try
+            {
+                if (server.ServerRunningStatus)
+                    continue;
+                Log.Information("Auto-starting server '{Name}' ({ID})", server.Settings.Name, server.Settings.ID);
+                server.StartServer();
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Auto-start failed for server '{Name}' ({ID})", server.Settings.Name, server.Settings.ID);
+            }
+        }
     }
 
     /// <summary>
@@ -252,6 +331,54 @@ public class Program
     }
 
     /// <summary>
+    /// Bootstrap file logger + process-wide crash catchers. Must run first in
+    /// Main so startup failures and escaped async-void exceptions are logged.
+    /// </summary>
+    private static void ConfigureCrashLogging()
+    {
+        Log.Logger = new LoggerConfiguration()
+            .MinimumLevel.Information()
+            .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+            .Enrich.FromLogContext()
+            .WriteTo.Console()
+            .WriteTo.File(
+                Path.Combine(LogsPath, "mcserver-.log"),
+                rollingInterval: RollingInterval.Day,
+                retainedFileCountLimit: 14,
+                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {SourceContext} {Message:lj}{NewLine}{Exception}")
+            .CreateBootstrapLogger();
+
+        AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
+        {
+            try
+            {
+                Log.Fatal(e.ExceptionObject as Exception,
+                    "Unhandled domain exception (IsTerminating={IsTerminating})",
+                    e.IsTerminating);
+            }
+            catch
+            {
+                // Never throw from the handler itself.
+            }
+            finally
+            {
+                if (e.IsTerminating)
+                    Log.CloseAndFlush();
+            }
+        };
+
+        TaskScheduler.UnobservedTaskException += (sender, e) =>
+        {
+            // Observed => does NOT crash the process. This covers fire-and-forget
+            // tasks (e.g. Blazor JSInterop races) that escaped local try/catch.
+            Log.Error(e.Exception, "Unobserved task exception");
+            e.SetObserved();
+        };
+
+        Log.Information("MCServer starting, logs at {LogsPath}", LogsPath);
+    }
+
+    /// <summary>
     /// Resets the Admin user to Admin/Admin by editing the data-folder
     /// settings file directly (no web server needed). Creates the file when
     /// absent so a CLI reset works before the first web launch. Never throws.
@@ -285,10 +412,12 @@ public class Program
             File.WriteAllText(file, root.ToString(Formatting.Indented));
 
             Console.WriteLine($"Admin login in '{file}' has been reset to {AuthService.DefaultUsername}/{AuthService.DefaultPassword}.");
+            Log.Information("Admin login reset via CLI in {File}", file);
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Failed to reset admin login: {ex.Message}");
+            Log.Error(ex, "Failed to reset admin login via CLI");
         }
     }
 

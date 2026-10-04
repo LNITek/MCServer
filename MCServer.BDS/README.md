@@ -30,3 +30,33 @@ Any issue or feature for the `Base Software (Bedrock Dedicated Server)` can be r
 | Server version control | :x: | |
 | World version control | :x: | |
 | Server scripting | :x: | |
+
+## Commands
+
+Type these in the server console page. `help` lists the registered commands and `help <command>` shows its arguments. Anything else is sent to the Bedrock server itself.
+
+| Command | Description | Arguments |
+|---|---|---|
+| `Backup` | Backs up a world to a `.tar.gz` archive. | `-world <name>` — world folder name, defaults to the active world |
+| `Update` | Downloads and installs the newest BDS version. | — |
+| `Trim` | Deletes chunks outside a keep-area for one dimension. The server must be stopped; a backup is made first unless `-nobackup` is given. | See trim arguments below |
+| `Start` | Starts the server if it is not running yet. | — |
+| `Restart` | Restarts the server. | `-delay <seconds>` — delay before restarting, default `10` |
+| `Stop` | Stops the server. | `-delay <seconds>` — delay before stopping, default `10` |
+
+### Trim arguments
+
+`Trim -world <name> -dimension <name> -mode <rect|radius> ...`
+
+| Argument | Description |
+|---|---|
+| `-world <name>` | World folder name, defaults to the active world |
+| `-dimension <name>` | `Overworld`, `Nether` or `End`, defaults to `Overworld` |
+| `-mode <rect\|radius>` | Keep-area shape. Auto-detected when omitted: `Radius` if `-cx`/`-cz`/`-radius` are given without rect bounds, otherwise `Rect` |
+| `-minx -minz -maxx -maxz <int>` | Rect mode: keep-area chunk coordinates (all four required) |
+| `-cx -cz -radius <int>` | Radius mode: center chunk and keep radius in chunks (all three required) |
+| `-circular` | Radius mode: keep a circle instead of a square |
+| `-dryrun` | Count only, delete nothing |
+| `-nobackup` | Skip the pre-trim backup |
+
+Example: `Trim -dimension Nether -cx 0 -cz 0 -radius 32 -dryrun`

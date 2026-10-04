@@ -22,8 +22,14 @@ public partial class Schedule : INotifyPropertyChanged
     string description { get; set; } = string.Empty;
     [NotifyChanged([nameof(StateBrush)])]
     bool enabled { get; set; } = false;
+    // NOTE: fields are lowercase by convention — the NotifyChanged generator
+    // creates the public PascalCase property (e.g. Mode) with change
+    // notification. Do NOT hand-write a PascalCase Mode property here: it
+    // collides with the generated lowercase alias, producing duplicate
+    // "Mode"/"mode" JSON keys and losing the value on load (internal setter
+    // is ignored by the deserializer).
     [NotifyChanged([nameof(StateBrush)])]
-    public ScheduleMode Mode { get; internal set; } = ScheduleMode.Once;
+    ScheduleMode mode { get; set; } = ScheduleMode.Once;
 
     [NotifyChanged]
     string command { get; set; } = string.Empty;

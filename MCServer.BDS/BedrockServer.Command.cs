@@ -26,7 +26,7 @@ public partial class BedrockServer
         Commands.AddRange(
         [
             new ServerCommand("Backup", "Backups the active world.", [
-                new ServerCommand.ArgumentInfo("-world", "The name of the world to backup.", typeof(uint))])
+                new ServerCommand.ArgumentInfo("-world", "The name of the world to backup. Defaults to the active world.", typeof(string))])
             {
                 OnExecution = (Args) => this.BackupServer(Args["-world"]?.Value.ToString()),
                 Display = new CommandDisplayInfo
@@ -87,7 +87,7 @@ public partial class BedrockServer
                 new ServerCommand.ArgumentInfo("-delay", "The delay before restarting in seconds.", typeof(uint))
             ])
             {
-                OnExecution = (Args) => this.RestartServer(TimeSpan.FromSeconds(((int?)Args["-delay"]?.Value) ?? 10)),
+                OnExecution = (Args) => this.RestartServer(TimeSpan.FromSeconds(Convert.ToInt32(Args["-delay"]?.Value ?? 10))),
                 Display = new CommandDisplayInfo
                 {
                     Icon = MudBlazor.FontIcons.MaterialIcons.Rounded.Replay,
@@ -100,7 +100,7 @@ public partial class BedrockServer
                 new ServerCommand.ArgumentInfo("-delay", "The delay before stoping in seconds.", typeof(uint))
             ])
             {
-                OnExecution = (Args) => this.StopServer(TimeSpan.FromSeconds(((int?)Args["-delay"]?.Value) ?? 10)),
+                OnExecution = (Args) => this.StopServer(TimeSpan.FromSeconds(Convert.ToInt32(Args["-delay"]?.Value ?? 10))),
                 Display = new CommandDisplayInfo
                 {
                     Icon = MudBlazor.FontIcons.MaterialIcons.Rounded.Stop,

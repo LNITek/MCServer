@@ -14,7 +14,9 @@ public static class MaintenanceService
     #region Backup World
     public static void BackupServer(this BedrockServer server, string? WorldName = null)
     {
-        var ActiveWorld = WorldName = server.GetProperties().FirstOrDefault(x => x.Name == "level-name")?.Value;
+        var ActiveWorld = server.GetProperties().FirstOrDefault(x => x.Name == "level-name")?.Value;
+        if (string.IsNullOrWhiteSpace(WorldName))
+            WorldName = ActiveWorld;
 
         if (server.ServerRunning && WorldName == ActiveWorld)
             BedrockProcessService.CreateThread(async () =>
@@ -32,49 +34,58 @@ public static class MaintenanceService
 
     internal static async Task BackupStoppedTask(BedrockServer server, string? WorldName)
     {
-        server.CommandQue.WaitOne();
-        string sDate = " " + DateTime.Now.ToString("yyyy-MM-dd"), Extension = "";
-        int I = 0;
-        DateTime Timer = DateTime.Now;
-
         if (string.IsNullOrWhiteSpace(WorldName)) return;
+        server.CommandQue.WaitOne();
+        try
+        {
+            string sDate = " " + DateTime.Now.ToString("yyyy-MM-dd"), Extension = "";
+            int I = 0;
+            DateTime Timer = DateTime.Now;
 
-        server.CommandRunning = true;
-        server.WriteDisplayLine("Starting Backup...");
-        await Task.Delay(1000);
+            server.CommandRunning = true;
+            server.WriteDisplayLine("Starting Backup...");
+            await Task.Delay(1000);
 
-        var WorldPath = Path.Combine(server.ServerPath, "worlds", WorldName);
-        var BackupPath = string.IsNullOrWhiteSpace(server.Host.BackupPath) ?
-            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) + "/MCBackups" :
-            server.Host.BackupPath;
-        BackupPath = OtherHelpers.FormatBackupPath(server, BackupPath, WorldName);
-        var SourcePath = Path.Combine(server.ServerPath, "..", "Backups", WorldName);
+            var WorldPath = Path.Combine(server.ServerPath, "worlds", WorldName);
+            var BackupPath = string.IsNullOrWhiteSpace(server.Host.BackupPath) ?
+                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) + "/MCBackups" :
+                server.Host.BackupPath;
+            BackupPath = OtherHelpers.FormatBackupPath(server, BackupPath, WorldName);
+            var SourcePath = Path.Combine(server.ServerPath, "..", "Backups", WorldName);
 
-        if (Directory.Exists(SourcePath)) Directory.Delete(SourcePath, true);
-        Directory.CreateDirectory(SourcePath);
-        if (!Directory.Exists(BackupPath)) Directory.CreateDirectory(BackupPath);
+            if (Directory.Exists(SourcePath)) Directory.Delete(SourcePath, true);
+            Directory.CreateDirectory(SourcePath);
+            if (!Directory.Exists(BackupPath)) Directory.CreateDirectory(BackupPath);
 
-        var FilePath = Path.GetDirectoryName(SourcePath);
-        if (!Directory.Exists(FilePath))
-            Directory.CreateDirectory(FilePath);
-        ExFun.CopyDir(WorldPath, SourcePath, true);
+            var FilePath = Path.GetDirectoryName(SourcePath);
+            if (!Directory.Exists(FilePath))
+                Directory.CreateDirectory(FilePath);
+            ExFun.CopyDir(WorldPath, SourcePath, true);
 
-        BackupPath += "/" + WorldName + sDate;
-        while (File.Exists(BackupPath + Extension + ".tar.gz"))
-            Extension = $" ({I++})";
+            BackupPath += "/" + WorldName + sDate;
+            while (File.Exists(BackupPath + Extension + ".tar.gz"))
+                Extension = $" ({I++})";
 
-        var ArchivePath = BackupPath + Extension + ".tar.gz";
+            var ArchivePath = BackupPath + Extension + ".tar.gz";
 
-        using FileStream fs = new(ArchivePath, FileMode.CreateNew, FileAccess.Write);
-        using GZipStream gz = new(fs, CompressionMode.Compress, leaveOpen: true);
+            using FileStream fs = new(ArchivePath, FileMode.CreateNew, FileAccess.Write);
+            using GZipStream gz = new(fs, CompressionMode.Compress, leaveOpen: true);
 
-        await TarFile.CreateFromDirectoryAsync(SourcePath, gz, false);
+            await TarFile.CreateFromDirectoryAsync(SourcePath, gz, false);
 
-        await Task.Delay(1000);
-        var Time = (DateTime.Now - Timer);
-        server.WriteDisplayLine($"Backup Completed In ({Time})");
-        server.CommandRunning = false;
-        server.CommandQue.Release();
+            await Task.Delay(1000);
+            var Time = (DateTime.Now - Timer);
+            server.WriteDisplayLine($"Backup Completed In ({Time})");
+        }
+        catch (Exception ex)
+        {
+            try { server.WriteDisplayLine($"Backup failed: {ex.Message}", ConsoleLineType.Error); } catch { }
+        }
+        finally
+        {
+            server.CommandRunning = false;
+            try { server.CommandQue.Release(); } catch { }
+        }
     }
 
     internal static async Task BackupRunningTask(BedrockServer server)

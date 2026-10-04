@@ -1,6 +1,10 @@
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:firewall="http://wixtoolset.org/schemas/v4/wxs/firewall"
      xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
   <Fragment>
+    <!-- App icon: embedded in the MSI for shortcuts and Add/Remove Programs. -->
+    <Icon Id="AppIcon" SourceFile="!(bindpath.PublishDir)Assets\MCServer.ico" />
+
     <!--
       Harvested Blazor SSR publish output (see PublishMCServer target).
       One component per file is generated under INSTALLFOLDER, preserving
@@ -11,11 +15,34 @@
     -->
     <ComponentGroup Id="MCServerFiles" Directory="INSTALLFOLDER">
       <Files Include="!(bindpath.PublishDir)**">
+        <!-- Authored manually below (firewall exception + listen address). -->
+        <Exclude Files="!(bindpath.PublishDir)MCServer.exe" />
         <!-- Dev-only, never ship. -->
         <Exclude Files="!(bindpath.PublishDir)appsettings.Development.json" />
         <!-- Keep the MSI lean for production testing. -->
         <Exclude Files="!(bindpath.PublishDir)**.pdb" />
       </Files>
+      <!--
+        Main executable: firewall exception (TCP 5000, any scope) and a
+        machine-wide ASPNETCORE_URLS so MSI installs listen on all interfaces
+        out of the box. Both are removed again on uninstall.
+      -->
+      <Component Bitness="always64">
+        <File Id="MCServerExe" Source="!(bindpath.PublishDir)MCServer.exe" KeyPath="yes">
+          <firewall:FirewallException Name="MCServer"
+                                       Protocol="tcp"
+                                       Port="5000"
+                                       Scope="any"
+                                       Description="Allow inbound access to the MCServer web UI." />
+        </File>
+        <Environment Id="AspNetCoreUrls"
+                     Name="ASPNETCORE_URLS"
+                     Value="http://0.0.0.0:5000"
+                     Action="set"
+                     System="yes"
+                     Permanent="no"
+                     Part="all" />
+      </Component>
     </ComponentGroup>
 
     <!-- Start Menu shortcuts (no payload file: registry KeyPath). -->
@@ -24,11 +51,13 @@
         <Shortcut Name="MCServer"
                   Target="[INSTALLFOLDER]MCServer.exe"
                   WorkingDirectory="INSTALLFOLDER"
+                  Icon="AppIcon"
                   Description="Start MCServer (Minecraft Bedrock management UI)" />
         <Shortcut Name="MCServer (reset admin login)"
                   Target="[INSTALLFOLDER]MCServer.exe"
                   Arguments="--reset-auth"
                   WorkingDirectory="INSTALLFOLDER"
+                  Icon="AppIcon"
                   Description="Reset the Admin login to Admin/Admin without starting the web server" />
         <RemoveFolder Id="RemoveAppProgramsFolder" Directory="ApplicationProgramsFolder" On="uninstall" />
         <!-- HKCU KeyPath: required by ICE38/ICE43 for non-advertised per-user shortcuts. -->

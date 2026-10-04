@@ -35,7 +35,15 @@ public partial class BedrockServer : INotifyPropertyChanged, IGameServer
         }
     }
 
-    public int PlayerCount => PlayerList.Count;
+    /// <summary>Currently online players (PlayerList also holds known offline players).</summary>
+    public int PlayerCount
+    {
+        get
+        {
+            try { return PlayerList.Count(p => p.IsOnline); }
+            catch { return 0; }
+        }
+    }
 
     /// <summary>BDS version sniffed from the server console (e.g. "1.26.21.1"), persisted across restarts.</summary>
     /*public string? DetectedServerVersion { get; private set; }
@@ -95,6 +103,7 @@ public partial class BedrockServer : INotifyPropertyChanged, IGameServer
 
         DocFiles =
         [
+            new("readme", "Readme", Path.Combine(AppContext.BaseDirectory, "Assets", "README.BDS.md"), Icons.Material.Filled.Description),
             new("notes", "How To", Path.Combine(ServerPath,"bedrock_server_how_to.html"), Icons.Material.Filled.StickyNote2),
             new("releases", "Release Notes", Path.Combine(ServerPath,"release-notes.txt"), Icons.Material.Filled.EventNote),
         ];
@@ -102,10 +111,20 @@ public partial class BedrockServer : INotifyPropertyChanged, IGameServer
         SetupCommands();
     }
 
-    public void StartServer() => BedrockProcessService.StartServer(this);
-    public void StopServer(TimeSpan delay) => BedrockProcessService.StopServer(this, delay);
+    public void StartServer() => BedrockProcessService.StartServer(this);    public void StopServer(TimeSpan delay) => BedrockProcessService.StopServer(this, delay);
     public void RestartServer(TimeSpan delay) => BedrockProcessService.RestartServer(this, delay);
     public Task<bool> StopAsync(string message, TimeSpan delay) => BedrockProcessService.Stop(this, message, delay);
+
+    /// <summary>
+    /// Re-arms all schedule timers from the current <see cref="ServerSchedules"/>.
+    /// Called after the user saves schedule edits so cron/enabled changes take
+    /// effect immediately (without this, stale timers keep running until restart).
+    /// </summary>
+    public void RefreshSchedules()
+    {
+        this.RemoveSchedules(ServerSchedules);
+        this.AddSchedules(ServerSchedules);
+    }
 
     public void RefreshPlayerProperties()
     {

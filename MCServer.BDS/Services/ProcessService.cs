@@ -22,7 +22,16 @@ public static class BedrockProcessService
 
     private static async Task Start(this BedrockServer server)
     {
-        await MaintenanceService.UpdateTask(server);
+        try
+        {
+            await MaintenanceService.UpdateTask(server);
+        }
+        catch (Exception ex)
+        {
+            // Offline boot etc: start the installed version anyway instead of
+            // dying silently (which also used to wedge CommandRunning on).
+            try { server.WriteDisplayLine($"Server update check failed, starting installed version: {ex.Message}", ConsoleLineType.Warning); } catch { }
+        }
 
         server.StartupDate = DateTime.Today;
         if (server.CommandRunning) return;
@@ -34,40 +43,51 @@ public static class BedrockProcessService
 
         server.CommandRunning = true;
         server.ServerRunning = true;
+        try
+        {
+            server.WriteDisplayLine("Starting Server".ToUpper());
 
-        server.WriteDisplayLine("Starting Server".ToUpper());
+            server.ServerProcess.StartInfo.UseShellExecute = false;
+            server.ServerProcess.StartInfo.RedirectStandardInput = true;
+            server.ServerProcess.StartInfo.RedirectStandardOutput = true;
+            server.ServerProcess.StartInfo.RedirectStandardError = true;
+            var exe = Path.Combine(server.ServerPath);
+            server.ServerProcess.StartInfo.WorkingDirectory = exe;
+            server.ServerProcess.StartInfo.FileName = Path.Combine(exe, "bedrock_server" + (server.Host.IsWindows ? ".exe" : ""));
+            if (!server.Host.IsWindows)
+                server.ServerProcess.StartInfo.EnvironmentVariables["LD_LIBRARY_PATH"] = ".";
+            server.ServerProcess.StartInfo.StandardInputEncoding = Encoding.Latin1;
+            server.ServerProcess.StartInfo.StandardOutputEncoding = Encoding.Latin1;
+            server.ServerProcess.StartInfo.CreateNoWindow = true;
+            server.ServerProcess.StartInfo.ErrorDialog = false;
 
-        server.ServerProcess.StartInfo.UseShellExecute = false;
-        server.ServerProcess.StartInfo.RedirectStandardInput = true;
-        server.ServerProcess.StartInfo.RedirectStandardOutput = true;
-        server.ServerProcess.StartInfo.RedirectStandardError = true;
-        var exe = Path.Combine(server.ServerPath);
-        server.ServerProcess.StartInfo.WorkingDirectory = exe;
-        server.ServerProcess.StartInfo.FileName = Path.Combine(exe, "bedrock_server" + (server.Host.IsWindows ? ".exe" : ""));
-        if (!server.Host.IsWindows)
-            server.ServerProcess.StartInfo.EnvironmentVariables["LD_LIBRARY_PATH"] = ".";
-        server.ServerProcess.StartInfo.StandardInputEncoding = Encoding.Latin1;
-        server.ServerProcess.StartInfo.StandardOutputEncoding = Encoding.Latin1;
-        server.ServerProcess.StartInfo.CreateNoWindow = true;
-        server.ServerProcess.StartInfo.ErrorDialog = false;
+            server.ServerProcess.OutputDataReceived += server.WriteProcessOut;
+            server.ServerProcess.ErrorDataReceived += server.WriteProcessError;
+            server.ServerProcess.Start();
+            server.SetAsChildProcess();
+            server.ServerProcess.BeginOutputReadLine();
 
-        server.ServerProcess.OutputDataReceived += server.WriteProcessOut;
-        server.ServerProcess.ErrorDataReceived += server.WriteProcessError;
-        server.ServerProcess.Start();
-        server.SetAsChildProcess();
-        server.ServerProcess.BeginOutputReadLine();
+            server.ServerProcess.WaitForExit();
+            server.CommandRunning = true;
+            server.ServerProcess.CancelOutputRead();
+            server.ServerProcess.OutputDataReceived -= server.WriteProcessOut;
+            server.ServerProcess.ErrorDataReceived -= server.WriteProcessError;
+            server.ServerProcess.Close();
 
-        server.ServerProcess.WaitForExit();
-        server.CommandRunning = true;
-        server.ServerProcess.CancelOutputRead();
-        server.ServerProcess.OutputDataReceived -= server.WriteProcessOut;
-        server.ServerProcess.ErrorDataReceived -= server.WriteProcessError;
-        server.ServerProcess.Close();
-
-        server.WriteProcessExit(server.ServerProcess, new());
-
-        server.ServerRunning = false;
-        server.CommandRunning = false;
+            server.WriteProcessExit(server.ServerProcess, new());
+        }
+        catch (Exception ex)
+        {
+            // Runs on a background thread (also unattended at boot via AutoStart):
+            // a missing exe or bad folder must surface in the console,
+            // never as an unhandled thread exception.
+            try { server.WriteDisplayLine($"Server failed to start: {ex.Message}", ConsoleLineType.Error); } catch { }
+        }
+        finally
+        {
+            server.ServerRunning = false;
+            server.CommandRunning = false;
+        }
     }
 
     public static void RestartServer(this BedrockServer server, TimeSpan Delay)

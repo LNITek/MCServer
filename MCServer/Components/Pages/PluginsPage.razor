@@ -33,11 +33,14 @@
     <MudItem xs="3">
         <div style="display: flex; justify-content: flex-end;">
             <MudTooltip Text="Install new plugin">
-                <MudFileUpload T="IBrowserFile" FilesChanged="InstallPlugin" Accept=".dll,.zip" MaximumFileCount="1">
+                <MudFileUpload T="IBrowserFile" FilesChanged="InstallPlugin" Accept=".dll,.zip" MaximumFileCount="1"
+                                 @ref="_pluginUpload">
                     <CustomContent>
                         <MudIconButton Variant="Variant.Filled" Color="Color.Primary" Icon="@Icons.Rounded.Add"
-                                       OnClick="@context.OpenFilePickerAsync" />
+                                        OnClick="@context.OpenFilePickerAsync" />
                     </CustomContent>
+                    @* Empty template: suppresses the selected-file chip/token. *@
+                    <SelectedTemplate />
                 </MudFileUpload>
             </MudTooltip>
         </div>
@@ -94,6 +97,8 @@
 </MudGrid>
 
 @code {
+    private MudFileUpload<IBrowserFile>? _pluginUpload;
+
     private async Task InstallPlugin(IBrowserFile? file)
     {
         if (file is null) return;
@@ -107,6 +112,11 @@
         catch (Exception ex)
         {
             Snackbar.Add($"Install failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            // Clear the picker selection so no chip lingers and the same file can be picked again.
+            try { if (_pluginUpload is not null) await _pluginUpload.ClearAsync(); } catch { }
         }
 
         StateHasChanged();

@@ -16,6 +16,12 @@
     <MajorUpgrade DowngradeErrorMessage="!(loc.DowngradeError)" />
     <MediaTemplate EmbedCab="yes" />
 
+    <!-- EULA shown by the WixUI license dialog (generated from ..\License.txt). -->
+    <WixVariable Id="WixUILicenseRtf" Value="License.rtf" />
+
+    <!-- App icon for the Add/Remove Programs entry (see AppIcon in MCServerComponents.wxs). -->
+    <Property Id="ARPPRODUCTICON" Value="AppIcon" />
+
     <!-- ASP.NET Core 10 (x64) runtime must be present: framework-dependent publish. -->
     <netfx:DotNetCompatibilityCheck Property="ASPNETCORERUNTIMECHECK"
                                     RuntimeType="aspnet"
@@ -59,8 +65,9 @@
       <Show Dialog="ConfirmDataWipeDlg" Before="CostFinalize" Condition="REMOVE=&quot;ALL&quot; AND REMOVEDATA=&quot;1&quot;" />
     </InstallUISequence>
 
-    <!-- Minimal UI: welcome / progress / exit, no license dialog. -->
-    <ui:WixUI Id="WixUI_Minimal" />
+    <!-- License + install-dir UI. WIXUI_INSTALLDIR must match the app folder. -->
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+    <ui:WixUI Id="WixUI_InstallDir" />
 
     <Feature Id="Main" Title="!(loc.FeatureTitle)" Description="!(loc.FeatureDescription)" Level="1">
       <ComponentGroupRef Id="MCServerFiles" />
