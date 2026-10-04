@@ -2,7 +2,7 @@
   <PropertyGroup>
     <!-- MSI file name: bin\<Config>\net10.0\MCServer.msi -->
     <OutputName>MCServer</OutputName>
-    <Version>0.3.0</Version>
+    <Version>0.3.1</Version>
     <!-- WiX v7 EULA acceptance (see https://wixtoolset.org/osmf/). -->
     <AcceptEula>wix7</AcceptEula>
     <!-- MCServer + BDS are 64-bit only -->

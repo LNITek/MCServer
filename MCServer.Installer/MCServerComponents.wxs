@@ -28,7 +28,7 @@
         out of the box. Both are removed again on uninstall.
       -->
       <Component Bitness="always64">
-        <File Id="MCServerExe" Source="!(bindpath.PublishDir)MCServer.exe" KeyPath="yes">
+        <File Id="MCServerExe" Source="MCServer.exe" KeyPath="yes">
           <firewall:FirewallException Name="MCServer"
                                        Protocol="tcp"
                                        Port="5000"

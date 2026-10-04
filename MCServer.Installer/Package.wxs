@@ -10,7 +10,7 @@
   <Package Id="MCServer"
            Name="MCServer"
            Manufacturer="LNI Tek"
-           Version="0.3.0"
+           Version="0.3.1"
            UpgradeCode="2EB95C55-0AE5-439E-8D05-0AE1D7D8A3AB"
            Scope="perMachine">
     <MajorUpgrade DowngradeErrorMessage="!(loc.DowngradeError)" />
