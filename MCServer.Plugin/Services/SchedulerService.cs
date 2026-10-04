@@ -147,8 +147,13 @@ public static class SchedulerService
 
     private static TimeSpan? CalculateCronDelay(CronExpression cron, DateTime now)
     {
-        var next = cron.GetNextOccurrence(now);
+        // Both DateTime overloads demand Kind=Utc and throw otherwise (this crashed
+        // schedule saves). The DateTimeOffset overload accepts our local wall-time
+        // inputs (DateTime.Now / StartDate.Date) and interprets the expression in
+        // server-local time, so "daily at noon" means local noon.
+        var from = new DateTimeOffset(now);
+        var next = cron.GetNextOccurrence(from, TimeZoneInfo.Local);
         if (next is null) return null;
-        return next.Value - now;
+        return next.Value - from;
     }
 }
