@@ -6,7 +6,7 @@ public class AppSettings
 {
     public const string SettingName = nameof(AppSettings);
 
-    public string BackupPath { get; set; } = "{ServerPath}/../WorldBackups";
+    public string BackupPath { get; set; } = "{RootPath}/WorldBackups/{ServerID}";
 
     public List<ServerSettings> ServerSettings { get; set; } = [];
 

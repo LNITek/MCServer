@@ -1,0 +1,13 @@
+{
+  "AppSettings": {
+    "BackupPath": "{RootPath}/WorldBackups/{ServerID}",
+    "ServerSettings": [],
+    "Users": [
+      {
+        "Username": "Admin",
+        "PasswordHash": "210000.z1o2xlsAVzL8oAhdLUVuug==.e44zkJIUZnf4bKp2w84sPMomAtW3ObAUjpObQ0SbIh8=",
+        "Role": "Admin"
+      }
+    ]
+  }
+}

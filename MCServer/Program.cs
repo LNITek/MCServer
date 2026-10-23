@@ -24,8 +24,34 @@ public class Program
 #if DEBUG
     public static string RootPath = Path.GetFullPath("./../Data/");
 #else
-    public static string RootPath = Path.GetFullPath(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MCServer/"));
+    public static string RootPath = ResolveRootPath();
 #endif
+
+    /// <summary>
+    /// Container/CI deployments set MCS_DATA to relocate user data (servers,
+    /// settings, logs, plugins). Falls back to the OS application-data folder.
+    /// On Linux GetFolderPath returns an empty string when the target directory
+    /// does not yet exist (fresh HOME/container), so it falls back through
+    /// LocalApplicationData, $HOME/.local/share and finally the working directory.
+    /// </summary>
+    private static string ResolveRootPath()
+    {
+        var env = Environment.GetEnvironmentVariable("MCS_DATA");
+        if (!string.IsNullOrWhiteSpace(env))
+            return Path.GetFullPath(env);
+
+        var baseDir = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        if (string.IsNullOrWhiteSpace(baseDir))
+            baseDir = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        if (string.IsNullOrWhiteSpace(baseDir))
+        {
+            var home = Environment.GetEnvironmentVariable("HOME");
+            baseDir = string.IsNullOrWhiteSpace(home) ? "." : Path.Combine(home, ".local/share");
+        }
+
+        if (string.IsNullOrWhiteSpace(baseDir)) baseDir = "/";
+        return Path.GetFullPath(Path.Combine(baseDir, "MCServer/"));
+    }
 
     public static string ServerPath = Path.GetFullPath(Path.Combine(RootPath, "Servers"));
     public static string PluginsPath = Path.GetFullPath(Path.Combine(RootPath, "Plugins"));

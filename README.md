@@ -25,7 +25,7 @@ Have an issue or feature in mind don't hesitate to post them [here](https://gith
 |---|---|---|
 | Windows | :heavy_check_mark: | :heavy_check_mark: |
 | Linux | :heavy_check_mark: | :x: |
-| Docker | :wavy_dash: | :x: |
+| Docker | :heavy_check_mark: | :heavy_check_mark: |
 
 ## Windows
 
@@ -49,20 +49,54 @@ Get-ChildItem "$env:APPDATA\MCServer\Servers" -Recurse -Filter bedrock_server.ex
   ForEach-Object { New-NetFirewallRule -DisplayName "Bedrock Server ($($_.Directory.Name))" -Direction Inbound -Program $_.FullName -Action Allow }
 ```
 
+### Build
+```
+dotnet build MCServer.Installer.wixproj -c Release
+```
+The installer file is under `MCServer.Installer/bin/Release/en-US/MCServer.msi`
+
+## Docker
+
+The image stores all data (servers, settings, logs, plugins) under `/data`, declared as a volume.
+Run with a named volume (recommended) or a bind mount to keep data across container recreations:
+```
+docker build -t mcserver .
+docker run -d --name mcserver -p 8080:8080 -v mcserver-data:/data mcserver
+```
+The data location inside the container can be changed with the `MCS_DATA` environment variable.
+The target directory must be mounted and writable by the container's non-root user:
+```
+docker run -d --name mcserver -p 8080:8080 -e MCS_DATA=/opt/mcs -v /opt/mcs:/opt/mcs mcserver
+```
+
+Or with Docker Compose (`docker compose up -d`):
+
+```yaml
+services:
+  mcserver:
+    image: mcserver:latest
+    container_name: mcserver
+    restart: unless-stopped
+    ports:
+      - "8080:8080"   # http UI
+      # - "8081:8081" # https UI
+    environment:
+      MCS_DATA: /data
+    volumes:
+      - mcserver:/data
+
+volumes:
+  mcserver:
+```
+
 ## Security
 
 Log in with `Admin` / `Admin`. Change the credentials immediately under Settings after installation.
 > Forgot your login? Type: `reset-auth` in the terminal (resets to `Admin` / `Admin`).
 
-The auth system is not tested agains any bad actors. I would keep the web UI LAN only.
+The auth system is not tested against any bad actors. I would keep the web UI local only.
 
-The project is AI assisted. Not all code writen by AI has been audited.
-
-## Build
-```
-dotnet build MCServer.slnx -c Release
-```
-The installer file is under `MCServer.Installer/bin/Release/en-US/MCServer.msi`
+The project is AI assisted. Not all code written by AI has been audited.
 
 ## Platform Features
 

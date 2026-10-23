@@ -1,8 +1,10 @@
 <Solution>
   <Folder Name="/Solution Items/">
+    <File Path=".dockerignore" />
     <File Path=".gitattributes" />
     <File Path=".gitignore" />
     <File Path="ChangeLog.md" />
+    <File Path="Dockerfile" />
     <File Path="License.txt" />
     <File Path="README.md" />
   </Folder>
