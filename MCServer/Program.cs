@@ -120,9 +120,7 @@ public class Program
 
         // Host CLI: reset the admin login without starting the web server.
         // Usage: MCServer --reset-auth
-        if (args.Any(a => a.Equals("--reset-auth", StringComparison.OrdinalIgnoreCase) ||
-                          a.Equals("--reset-admin", StringComparison.OrdinalIgnoreCase) ||
-                          a.Equals("reset-auth", StringComparison.OrdinalIgnoreCase)))
+        if (args.Any(a => a.Equals("--reset-admin", StringComparison.OrdinalIgnoreCase)))
         {
             ResetAdminViaCli();
             return;

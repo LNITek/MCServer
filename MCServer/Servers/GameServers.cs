@@ -67,7 +67,7 @@ public class GameServers : List<IGameServer>, IDisposable
     }
 
     /// <summary>
-    /// Releases schedule timers, disposes the server and removes it from
+    /// Disposes the server (releasing its schedule engine) and removes it from
     /// the registry. Returns false when no server with that ID was registered.
     /// </summary>
     public bool Unregister(IGameServer server)
@@ -76,7 +76,6 @@ public class GameServers : List<IGameServer>, IDisposable
         {
             var existing = FindByID(server.Settings.ID);
             if (existing is null) return false;
-            existing.RemoveSchedules(existing.ServerSchedules);
             try { existing.Dispose(); } catch { }
             return Remove(existing);
         }

@@ -6,7 +6,6 @@ public static class JsonOptions
 {
     public static JsonSerializerSettings SerializerSettings = new()
     {
-        Converters = [new CronosJsonConverter()],
         Formatting = Formatting.None,
     };
 }

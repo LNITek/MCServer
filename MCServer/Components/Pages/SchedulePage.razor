@@ -1,6 +1,8 @@
 ﻿@page "/servers/{serverId}/schedules"
 @inject GameServers GameServers
 @inject NavigationManager Nav
+@implements IDisposable
+@using System.ComponentModel
 
 <PageTitle>@(Server?.Settings.Name ?? "MCServer") - Schedules</PageTitle>
 
@@ -55,11 +57,12 @@
                     <MudListItem Value="@schedule">
                         <ChildContent>
                             <MudStack Spacing="1" Row AlignItems="AlignItems.Center">
-                                <MudChip Color="@schedule.StateBrush" Text="@schedule.Mode.ToString()" />
+                                <MudChip Color="@schedule.StateBrush" Text="@schedule.Status.ToString()" />
 
                                 <MudStack Spacing="0">
                                     <MudText Typo="Typo.h6">@schedule.Name</MudText>
-                                    <MudText Typo="Typo.body2">@schedule.LastRunFormatted</MudText>
+                                    <MudText Typo="Typo.body2">@schedule.StatusLabel</MudText>
+                                    <MudText Typo="Typo.body2" Style="opacity:.7;">@schedule.LastRunFormatted</MudText>
                                 </MudStack>
                             </MudStack>
                         </ChildContent>
@@ -129,6 +132,11 @@
             if (string.IsNullOrWhiteSpace(SearchText)) return true;
             return filter.Name.Contains(SearchText, StringComparison.OrdinalIgnoreCase);
         });
+
+        // The engine mutates schedule state on a background thread; re-render
+        // whenever the server publishes a schedule change so chips stay honest.
+        Server.PropertyChanged -= ServerStateChanged;
+        Server.PropertyChanged += ServerStateChanged;
     }
 
     private void AddSchedule_Click()
@@ -137,9 +145,9 @@
         var schedule = new Schedule();
         Server.ServerSchedules.Add(schedule);
         SelectedSchedule = schedule;
-        // Persist immediately so the new schedule survives an app restart
-        // even if the user never presses save.
-        Server.SetSchedules(Server.ServerSchedules);
+        // The engine persists on its next save pass; force it now so the new
+        // schedule survives an app restart even if the user never presses save.
+        Server.FlushSchedules();
         Schedules.RefreshFilter();
         StateHasChanged();
     }
@@ -154,5 +162,13 @@
     {
         Schedules.RefreshFilter();
         StateHasChanged();
+    }
+
+    private void ServerStateChanged(object? sender, PropertyChangedEventArgs e) =>
+        _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        if (Server is not null) Server.PropertyChanged -= ServerStateChanged;
     }
 }

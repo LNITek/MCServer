@@ -1,7 +1,8 @@
 ﻿# MCServer
 [![Release](https://img.shields.io/badge/PreRelease-0.3.0-blue.svg)](https://github.com/LNITek/MCServer/releases/latest)
 ![.NET](https://img.shields.io/badge/.NET-10-512BD4.svg)
-![Platform](https://img.shields.io/badge/platform-Windows%20x64-blue.svg)
+![Platform](https://img.shields.io/badge/Platform-Windows%20x64-lightblue.svg)
+![Platform](https://img.shields.io/badge/Platform-Docker%20-skyblue.svg)
 
 [![RepoRanker](https://reporanker.com/badge/LNITek/MCServer)](https://reporanker.com/repos/LNITek/MCServer)
 
@@ -9,7 +10,7 @@
 
 > ***Note!*** This software is optimised for private home servers. For public servers, use it at your own risk.
 
-> ***Warning!*** This project is in development. Code is messy featurs my or my not work as expected, or at all.
+> ***Warning!*** This project is in development. Code is messy. Featurs my or my not work as expected, or at all.
 ---
 
 Check the feature tables down below or find the [Documentation](https://github.com/LNITek/MCServer/wiki) for more info.
@@ -92,7 +93,7 @@ volumes:
 ## Security
 
 Log in with `Admin` / `Admin`. Change the credentials immediately under Settings after installation.
-> Forgot your login? Type: `reset-auth` in the terminal (resets to `Admin` / `Admin`).
+> Forgot your login? Type: `--reset-admin` in the terminal (resets to `Admin` / `Admin`).
 
 The auth system is not tested against any bad actors. I would keep the web UI local only.
 

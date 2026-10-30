@@ -72,19 +72,16 @@ public interface IGameServer : INotifyPropertyChanged, IDisposable
     /// <summary>
     /// Deletes everything under <see cref="ServerPath"/> from disk.
     /// Refuses to run while the server is running and refuses to delete
-    /// the shared files root or a filesystem root. Schedule timers are
-    /// released so nothing fires after the files are gone.
-    /// Removing the server from the registry and from the settings files
-    /// is a host responsibility, not the plugin's.
+    /// the shared files root or a filesystem root. Schedule engines are
+    /// released on <see cref="IDisposable.Dispose"/> so nothing fires after
+    /// the files are gone. Removing the server from the registry and from
+    /// the settings files is a host responsibility, not the plugin's.
     /// </summary>
     /// <exception cref="InvalidOperationException">Server is running, or the resolved path is unsafe.</exception>
     void Delete()
     {
         if (ServerRunningStatus)
             throw new InvalidOperationException($"Stop server '{Settings.Name}' before deleting it.");
-
-        // Release schedule timers so nothing fires after the files are gone.
-        this.RemoveSchedules(ServerSchedules);
 
         if (string.IsNullOrWhiteSpace(ServerPath))
             throw new InvalidOperationException("Server path is empty; refusing to delete.");
@@ -102,6 +99,9 @@ public interface IGameServer : INotifyPropertyChanged, IDisposable
             Directory.Delete(path, recursive: true);
     }
 
-    /// <summary>Optional hook after schedules change. Default is a no-op.</summary>
-    void RefreshSchedules() { }
+    /// <summary>
+    /// Forces the schedule engine to re-arm pending schedules and persist
+    /// schedules.json immediately. Implementations without schedules are a no-op.
+    /// </summary>
+    void FlushSchedules() { }
 }

@@ -75,6 +75,8 @@ public partial class BedrockServer : INotifyPropertyChanged, IGameServer
     public ProgressDisplay Progress { get; } = new();
 
     public ObservableCollection<Schedule> ServerSchedules { get; } = [];
+    /// <summary>Schedule engine for this server; owns arming and persistence.</summary>
+    private ScheduleEngine? _schedules;
     public ObservableCollection<Player> PlayerList { get; set; } = [];
 
     public IReadOnlyList<ServerDocFile> DocFiles { get; }
@@ -84,20 +86,14 @@ public partial class BedrockServer : INotifyPropertyChanged, IGameServer
         Settings = settings;
         Host = host;
         PlayerList.AddRange(this.GetPlayers());
-        ServerSchedules.AddRange(this.GetSchedules());
-        this.AddSchedules(ServerSchedules);
-        ServerSchedules.CollectionChanged += (s, e) =>
-        {
-            switch (e.Action)
-            {
-                case NotifyCollectionChangedAction.Add:
-                    this.AddSchedules(e.NewItems?.OfType<Schedule>() ?? []);
-                    break;
-                case NotifyCollectionChangedAction.Remove:
-                    this.RemoveSchedules(e.OldItems?.OfType<Schedule>() ?? []);
-                    break;
-            }
-        };
+
+        var loaded = this.LoadSchedules(out var loadError);
+        if (loadError is ScheduleLoadError.CorruptFile)
+            Host.NotifyUser("schedules.json was unreadable; a copy was kept as schedules.json.corrupt.bak", Severity.Warning);
+        ServerSchedules.AddRange(loaded);
+        _schedules = new ScheduleEngine(this);
+        _schedules.Changed += () => NotifyPropertyChanged(nameof(ServerSchedules));
+        ServerSchedules.CollectionChanged += (s, e) => NotifyPropertyChanged(nameof(ServerSchedules));
 
         Progress.PropertyChanged += (_, _) => NotifyPropertyChanged(nameof(Progress));
 
@@ -111,20 +107,17 @@ public partial class BedrockServer : INotifyPropertyChanged, IGameServer
         SetupCommands();
     }
 
-    public void StartServer() => BedrockProcessService.StartServer(this);    public void StopServer(TimeSpan delay) => BedrockProcessService.StopServer(this, delay);
+    public void StartServer() => BedrockProcessService.StartServer(this);
+    public void StopServer(TimeSpan delay) => BedrockProcessService.StopServer(this, delay);
     public void RestartServer(TimeSpan delay) => BedrockProcessService.RestartServer(this, delay);
     public Task<bool> StopAsync(string message, TimeSpan delay) => BedrockProcessService.Stop(this, message, delay);
 
     /// <summary>
-    /// Re-arms all schedule timers from the current <see cref="ServerSchedules"/>.
-    /// Called after the user saves schedule edits so cron/enabled changes take
-    /// effect immediately (without this, stale timers keep running until restart).
+    /// Persists schedules.json now and re-arms on the engine's next pass.
+    /// Called after the user explicit-save; ordinary edits are picked up by
+    /// the engine automatically.
     /// </summary>
-    public void RefreshSchedules()
-    {
-        this.RemoveSchedules(ServerSchedules);
-        this.AddSchedules(ServerSchedules);
-    }
+    public void FlushSchedules() => _schedules?.Flush();
 
     public void RefreshPlayerProperties()
     {
@@ -305,6 +298,7 @@ public partial class BedrockServer : INotifyPropertyChanged, IGameServer
     public void Dispose()
     {
         ServerRunning = false;
+        _schedules?.Dispose();
         try
         {
             if (ServerProcess is { HasExited: false })
