@@ -27,6 +27,13 @@ public partial class ServerSettings : INotifyPropertyChanged
     {
         if (string.IsNullOrEmpty(Path))
             Path = System.IO.Path.Combine(filesRoot, ID);
+        else if (!System.IO.Path.IsPathRooted(Path))
+            // Older entries were stored relative to the project directory
+            // (e.g. "./../Data/..."). filesRoot is <data>/Servers, so resolve
+            // relative paths against the data root, not the caller's cwd.
+            Path = System.IO.Path.Combine(
+                System.IO.Path.GetDirectoryName(filesRoot) ?? filesRoot,
+                Path);
         return System.IO.Path.GetFullPath(Path);
     }
 

@@ -80,23 +80,7 @@ public interface IGameServer : INotifyPropertyChanged, IDisposable
     /// <exception cref="InvalidOperationException">Server is running, or the resolved path is unsafe.</exception>
     void Delete()
     {
-        if (ServerRunningStatus)
-            throw new InvalidOperationException($"Stop server '{Settings.Name}' before deleting it.");
-
-        if (string.IsNullOrWhiteSpace(ServerPath))
-            throw new InvalidOperationException("Server path is empty; refusing to delete.");
-
-        var path = Path.GetFullPath(ServerPath);
-        var root = Path.GetFullPath(Host.ServerFiles);
-
-        if (path.Equals(root, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException("Refusing to delete the shared server files root.");
-
-        if (Path.GetPathRoot(path)?.Equals(path, StringComparison.OrdinalIgnoreCase) == true)
-            throw new InvalidOperationException($"Refusing to delete filesystem root '{path}'.");
-
-        if (Directory.Exists(path))
-            Directory.Delete(path, recursive: true);
+        ServerProvisioning.DeleteServerDirectory(this);
     }
 
     /// <summary>

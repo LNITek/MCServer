@@ -30,9 +30,13 @@ public static class ScheduleStore
     /// result is empty, so a later save cannot destroy the original data.
     /// </summary>
     public static List<Schedule> LoadSchedules(this IGameServer server, out ScheduleLoadError error)
+        => LoadSchedulesFromFile(server.SchedulesPath(), out error);
+
+    /// <summary>Loads schedules directly from a JSON file. Used by the offline CLI.</summary>
+    public static List<Schedule> LoadSchedulesFromFile(string path, out ScheduleLoadError error)
     {
         error = ScheduleLoadError.None;
-        var path = server.SchedulesPath();
+
         if (!File.Exists(path)) return [];
 
         try
@@ -66,7 +70,8 @@ public static class ScheduleStore
     {
         var path = server.SchedulesPath();
         var dir = Path.GetDirectoryName(path);
-        if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
+        if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+            return; // The server root was deleted or moved; never recreate it.
 
         var json = JsonConvert.SerializeObject(
             new StoreFile(Version, [.. schedules]),

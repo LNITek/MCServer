@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+exec dotnet "/home/egbert/Documents/Projects/CSharp/MCServer/MCServer/bin/Debug/net10.0/MCServer.dll" "$@"

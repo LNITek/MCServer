@@ -25,13 +25,16 @@ FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
 
+# Install a stable `MCServer` command in PATH so the host and one-off CLI
+USER 0
+RUN printf '#!/bin/sh\nexec dotnet /app/MCServer.dll "$@"\n' > /usr/local/bin/MCServer && chmod 755 /usr/local/bin/MCServer
+
 # Data/config root override (see MCServer/Program.cs ResolveRootPath).
 # /data must be pre-created and owned by the app user: VOLUME inherits
 # the image directory's ownership on auto-created anonymous volumes.
 ENV MCS_DATA=/data
-USER 0
 RUN mkdir -p /data && chown $APP_UID /data
 VOLUME /data
 USER $APP_UID
 
-ENTRYPOINT ["dotnet", "MCServer.dll"]
+ENTRYPOINT ["/usr/local/bin/MCServer"]

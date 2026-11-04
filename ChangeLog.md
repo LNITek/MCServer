@@ -1,15 +1,30 @@
-# V0.3.1
-Fixed: Crash relating to console.
-Fixed: Added command field to schedules.
-Fixed: Schedules not reading & writing correctly.
-Fixed: Custom server properties using the same value for all fields.
-Fixed: Player permissions now save properly.
-Fixed: World import & other import/export functions.
+# V0.3.3
 
-Added: Host logging with Serilog
-Added: Apache V2 License.
-Added: README file to BDS.
-Added: `help` command for server console.
+* Added: Command-line interface for paths, settings inspection, server discovery, per-server docs/config/schedules, live server commands, progress UI for downloads, and host single-instance enforcement.
+* Added: `--create-server` / `--delete-server` with shared UI/CLI safety checks and pipe forwarding.
+* Added: `MCServer` command is installed in PATH by the Docker image (entrypoint changes) and the Windows MSI installer (PATH update).
+* Added: Local named pipe (`MCServer.Cli`) so one-off commands talk to a running host.
+* Added: README `Commands` section documenting flags, exit codes and examples.
+* Added: `--help` output is generated from the registered CLI options, so new flags appear automatically.
+* Fixed: CLI now resolves the repo-local `Data` folder and old relative `Path` entries from settings.json instead of the caller's working directory.
+* Fixed: Reworked the schedule system to work properly.
+
+# V0.3.2
+
+* Fixed: Windows installer installing properly.
+
+# V0.3.1
+
+* Fixed: Crash relating to console.
+* Fixed: Added command field to schedules.
+* Fixed: Schedules not reading & writing correctly.
+* Fixed: Custom server properties using the same value for all fields.
+* Fixed: Player permissions now save properly.
+* Fixed: World import & other import/export functions.
+* Added: Host logging with Serilog
+* Added: Apache V2 License.
+* Added: README file to BDS.
+* Added: `help` command for server console.
 
 # V0.3.0
 

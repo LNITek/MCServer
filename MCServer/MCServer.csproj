@@ -7,7 +7,7 @@
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
     <ApplicationIcon>Assets\MCServer.ico</ApplicationIcon>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
-    <Version>0.3.2</Version>
+    <Version>0.3.3</Version>
   </PropertyGroup>
 
   <ItemGroup>
@@ -27,6 +27,7 @@
 
   <ItemGroup>
     <PackageReference Include="Blazor.LocalStorage" Version="10.1.0" />
+    <PackageReference Include="CommandLineParser" Version="2.9.1" />
     <PackageReference Include="Cronos" Version="0.13.0" />
     <PackageReference Include="ExtraFunctions" Version="2.0.0.51-Pre-release" />
     <PackageReference Include="Markdig" Version="1.3.2" />

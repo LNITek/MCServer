@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using MCServer;
 using MCServer.BDS;
+using MCServer.Cli;
 using MCServer.Components;
 using MCServer.Plugins;
 using MCServer.Server;
@@ -21,15 +22,13 @@ public class Program
 {
     public static string AssetsPath = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(Environment.ProcessPath) ?? ".", "Assets"));
 
-#if DEBUG
-    public static string RootPath = Path.GetFullPath("./../Data/");
-#else
     public static string RootPath = ResolveRootPath();
-#endif
 
     /// <summary>
     /// Container/CI deployments set MCS_DATA to relocate user data (servers,
-    /// settings, logs, plugins). Falls back to the OS application-data folder.
+    /// settings, logs, plugins). In Debug builds, default to the repo-local
+    /// Data folder relative to the assembly instead of the caller's working
+    /// directory, so `.bin/MCServer` and dotnet run both find the same data.
     /// On Linux GetFolderPath returns an empty string when the target directory
     /// does not yet exist (fresh HOME/container), so it falls back through
     /// LocalApplicationData, $HOME/.local/share and finally the working directory.
@@ -40,6 +39,10 @@ public class Program
         if (!string.IsNullOrWhiteSpace(env))
             return Path.GetFullPath(env);
 
+#if DEBUG
+        var data = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "Data");
+        return Path.GetFullPath(data);
+#else
         var baseDir = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
         if (string.IsNullOrWhiteSpace(baseDir))
             baseDir = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
@@ -51,6 +54,7 @@ public class Program
 
         if (string.IsNullOrWhiteSpace(baseDir)) baseDir = "/";
         return Path.GetFullPath(Path.Combine(baseDir, "MCServer/"));
+#endif
     }
 
     public static string ServerPath = Path.GetFullPath(Path.Combine(RootPath, "Servers"));
@@ -84,9 +88,23 @@ public class Program
 
     public static void Main(string[] args)
     {
+        // One-off CLI commands run before the host is built. Non-MCServer
+        // switches (e.g. --urls) flow into the ASP.NET builder unchanged.
+        if (CliDispatcher.TryHandleAsync(args).GetAwaiter().GetResult())
+            return;
+
+        // Refuse to start a second instance while one is running.
+        using var singleInstance = SingleInstance.TryAcquire();
+        if (singleInstance is null)
+        {
+            Console.Error.WriteLine("MCServer is already running. Use the existing terminal window or MCServer --help.");
+            Environment.Exit(1);
+            return;
+        }
+
         // User data lives outside the install dir (Program Files is read-only
         // for standard users and is replaced on upgrade). Ensure it exists for
-        // both the web host and the --reset-auth CLI below.
+        // both the web host and the standalone CLI.
         Directory.CreateDirectory(RootPath);
         Directory.CreateDirectory(LogsPath);
 
@@ -117,15 +135,6 @@ public class Program
 
     private static void RunHost(string[] args)
     {
-
-        // Host CLI: reset the admin login without starting the web server.
-        // Usage: MCServer --reset-auth
-        if (args.Any(a => a.Equals("--reset-admin", StringComparison.OrdinalIgnoreCase)))
-        {
-            ResetAdminViaCli();
-            return;
-        }
-
         var builder = WebApplication.CreateBuilder(args);
 
         // File + console logging via Serilog. File always goes to the writable
@@ -192,6 +201,7 @@ public class Program
         builder.Services.AddSingleton<AuthService>();
         builder.Services.AddSingleton<ConsoleInputService>();
         builder.Services.AddSingleton<HostConsoleCommands>();
+        builder.Services.AddHostedService<CliPipeServer>();
         builder.Services.AddHostedService<ConsoleReaderService>();
         builder.Services.AddSingleton<ProcessMetricsService>();
         builder.Services.AddSingleton<HostMetricsService>();
@@ -407,7 +417,7 @@ public class Program
     /// settings file directly (no web server needed). Creates the file when
     /// absent so a CLI reset works before the first web launch. Never throws.
     /// </summary>
-    private static void ResetAdminViaCli()
+    public static int ResetAdminViaCli()
     {
         // Fresh start: the legacy install-dir appsettings files are
         // install-time defaults only and are intentionally left alone.
@@ -437,11 +447,13 @@ public class Program
 
             Console.WriteLine($"Admin login in '{file}' has been reset to {AuthService.DefaultUsername}/{AuthService.DefaultPassword}.");
             Log.Information("Admin login reset via CLI in {File}", file);
+            return 0;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Failed to reset admin login: {ex.Message}");
+            Console.Error.WriteLine($"Failed to reset admin login: {ex.Message}");
             Log.Error(ex, "Failed to reset admin login via CLI");
+            return 1;
         }
     }
 

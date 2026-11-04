@@ -42,6 +42,14 @@
                      System="yes"
                      Permanent="no"
                      Part="all" />
+        <!-- Make `MCServer` usable from any console (CLI commands). -->
+        <Environment Id="InstallFolderPath"
+                     Name="PATH"
+                     Value="[INSTALLFOLDER]"
+                     Action="set"
+                     System="yes"
+                     Permanent="no"
+                     Part="first" />
       </Component>
     </ComponentGroup>
 
@@ -55,7 +63,7 @@
                   Description="Start MCServer (Minecraft Bedrock management UI)" />
         <Shortcut Name="MCServer (reset admin login)"
                   Target="[INSTALLFOLDER]MCServer.exe"
-                  Arguments="--reset-auth"
+                  Arguments="--reset-admin"
                   WorkingDirectory="INSTALLFOLDER"
                   Icon="AppIcon"
                   Description="Reset the Admin login to Admin/Admin without starting the web server" />

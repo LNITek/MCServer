@@ -80,32 +80,23 @@
         _error = null;
         var name = _name.Trim();
 
-        if (string.IsNullOrWhiteSpace(name))
+        // Same validation as the CLI Add Server flow (shared implementation).
+        var validation = ServerProvisioning.ValidateCreate(name, "BDS", [], Host.ServerFiles);
+        if (!validation.IsValid)
         {
-            _error = "Enter a server name.";
-            return;
-        }
-
-        if (name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
-        {
-            _error = $"Server name contains invalid characters: {name}";
+            _error = validation.Error;
             return;
         }
 
         var settings = new ServerSettings
         {
-            ID = name.ToLower(),
-            Name = name,
+            ID = validation.Id,
+            Name = validation.Name,
             Type = "BDS",
             Preview = _preview,
             AutoStart = _autoStart,
         };
-        var targetPath = settings.GetFullPath(Host.ServerFiles);
-        if (Directory.Exists(targetPath))
-        {
-            _error = $"A server folder '{name}' already exists.";
-            return;
-        }
+        var targetPath = validation.Folder;
 
         _busy = true;
         _progress = 0;
