@@ -127,3 +127,6 @@ The project is AI assisted. Not all code written by AI has been audited.
 | Plugin | Description |
 |---|---|
 | [Bedrock Dedicated Server](MCServer.BDS/README.md) | Manage Mojang Bedrock servers |
+
+## Commands
+

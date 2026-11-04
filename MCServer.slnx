@@ -11,5 +11,6 @@
   <Project Path="MCServer.BDS/MCServer.BDS.csproj" />
   <Project Path="MCServer.Installer/MCServer.Installer.wixproj" Type="b7dd6f7e-def8-4e67-b5b7-07ef123db6f0" />
   <Project Path="MCServer.Plugin/MCServer.Plugin.csproj" />
+  <Project Path="MCServer.Test/MCServer.Test.csproj" />
   <Project Path="MCServer/MCServer.csproj" />
 </Solution>

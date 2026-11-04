@@ -71,9 +71,9 @@
     {
         <MudItem xs="12" md="6">
             <MudTextField Variant="Variant.Outlined" T="string" Label="Cron Expression"
-                          Value="@Schedule.Cron" ValueChanged="OnCronChanged"
+                          Value="@Schedule.Cron" ValueChanged="OnCronChanged" Immediate="true"
                           Error="@(_cronError is not null)" ErrorText="@_cronError"
-                          HelperText="e.g. 0 12 * * * (daily at noon)" />
+                          HelperText="@CronHelperText" />
         </MudItem>
         <MudItem xs="12" md="3">
             <MudDatePicker T="DateTime?" Label="From (optional)" Variant="Variant.Outlined"
@@ -195,6 +195,14 @@
         Schedule.OneShotDue = Schedule.OneShotDue.Date + picked;
         Save();
     }
+
+    /// <summary>Live preview under the cron field: describes what the typed
+    /// expression will do ("Daily at 12:00"). Falls back to an example hint
+    /// while the text doesn't parse.</summary>
+    private string CronHelperText =>
+        (Schedule?.Cron is { Length: > 0 } cron && _cronError is null
+            ? CronText.Describe(cron) : null)
+        ?? "e.g. 0 12 * * * (daily at noon)";
 
     /// <summary>Accepts any text the user typed (the engine will flag bad
     /// expressions with an Invalid status), but surfaces a parse error right
